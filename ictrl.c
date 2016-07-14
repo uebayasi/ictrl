@@ -42,30 +42,31 @@ struct control_state {
 	struct event		ev;
 	struct event		evt;
 	int			fd;
-} *control_state;
+};
 
 extern void (*control_dispatch)(int, short, void *);
 
 #define	CONTROL_BACKLOG	5
 
 void	control_accept(int, short, void *);
-void	control_close(struct control_session *);
+void	control_close(struct control_state *, struct control_session *);
 
-int
+struct control_state *
 control_init(char *path)
 {
+	struct control_state	*ctrl;
 	struct sockaddr_un	 sun;
 	int			 fd;
 	mode_t			 old_umask;
 
-	if ((control_state = calloc(1, sizeof(*control_state))) == NULL) {
+	if ((ctrl = calloc(1, sizeof(*ctrl))) == NULL) {
 		log_warn("control_init: calloc");
-		return -1;
+		return NULL;
 	}
 
 	if ((fd = socket(AF_UNIX, SOCK_SEQPACKET, 0)) == -1) {
 		log_warn("control_init: socket");
-		return -1;
+		return NULL;
 	}
 
 	bzero(&sun, sizeof(sun));
@@ -73,14 +74,14 @@ control_init(char *path)
 	if (strlcpy(sun.sun_path, path, sizeof(sun.sun_path)) >=
 	    sizeof(sun.sun_path)) {
 		log_warnx("control_init: path %s too long", path);
-		return -1;
+		return NULL;
 	}
 
 	if (unlink(path) == -1)
 		if (errno != ENOENT) {
 			log_warn("control_init: unlink %s", path);
 			close(fd);
-			return -1;
+			return NULL;
 		}
 
 	old_umask = umask(S_IXUSR|S_IXGRP|S_IWOTH|S_IROTH|S_IXOTH);
@@ -88,7 +89,7 @@ control_init(char *path)
 		log_warn("control_init: bind: %s", path);
 		close(fd);
 		umask(old_umask);
-		return -1;
+		return NULL;
 	}
 	umask(old_umask);
 
@@ -96,53 +97,54 @@ control_init(char *path)
 		log_warn("control_init: chmod");
 		close(fd);
 		(void)unlink(path);
-		return -1;
+		return NULL;
 	}
 
 	if (listen(fd, CONTROL_BACKLOG) == -1) {
 		log_warn("control_init: listen");
 		close(fd);
 		(void)unlink(path);
-		return -1;
+		return NULL;
 	}
 
 	socket_setblockmode(fd, 1);
-	control_state->fd = fd;
+	ctrl->fd = fd;
 
-	return 0;
+	return ctrl;
 }
 
 void
-control_cleanup(char *path)
+control_cleanup(struct control_state *ctrl, char *path)
 {
 	if (path)
 		unlink(path);
 
-	event_del(&control_state->ev);
-	event_del(&control_state->evt);
-	close(control_state->fd);
-	free(control_state);
+	event_del(&ctrl->ev);
+	event_del(&ctrl->evt);
+	close(ctrl->fd);
+	free(ctrl);
 }
 
 void
-control_event_init(void)
+control_event_init(struct control_state *ctrl)
 {
-	event_set(&control_state->ev, control_state->fd, EV_READ,
+	event_set(&ctrl->ev, ctrl->fd, EV_READ,
 	    control_accept, NULL);
-	event_add(&control_state->ev, NULL);
-	evtimer_set(&control_state->evt, control_accept, NULL);
+	event_add(&ctrl->ev, NULL);
+	evtimer_set(&ctrl->evt, control_accept, ctrl);
 }
 
 /* ARGSUSED */
 void
-control_accept(int listenfd, short event, void *bula)
+control_accept(int listenfd, short event, void *v)
 {
+	struct control_state	*ctrl = v;
 	int			 connfd;
 	socklen_t		 len;
 	struct sockaddr_un	 sun;
 	struct control_session	*c;
 
-	event_add(&control_state->ev, NULL);
+	event_add(&ctrl->ev, NULL);
 	if ((event & EV_TIMEOUT))
 		return;
 
@@ -156,8 +158,8 @@ control_accept(int listenfd, short event, void *bula)
 		if (errno == ENFILE || errno == EMFILE) {
 			struct timeval evtpause = { 1, 0 };
 
-			event_del(&control_state->ev);
-			evtimer_add(&control_state->evt, &evtpause);
+			event_del(&ctrl->ev);
+			evtimer_add(&ctrl->evt, &evtpause);
 		} else if (errno != EWOULDBLOCK && errno != EINTR &&
 		    errno != ECONNABORTED)
 			log_warn("control_accept");
@@ -177,15 +179,15 @@ control_accept(int listenfd, short event, void *bula)
 }
 
 void
-control_close(struct control_session *c)
+control_close(struct control_state *ctrl, struct control_session *c)
 {
 	event_del(&c->ev);
 	close(c->fd);
 
 	/* Some file descriptors are available again. */
-	if (evtimer_pending(&control_state->evt, NULL)) {
-		evtimer_del(&control_state->evt);
-		event_add(&control_state->ev, NULL);
+	if (evtimer_pending(&ctrl->evt, NULL)) {
+		evtimer_del(&ctrl->evt);
+		event_add(&ctrl->ev, NULL);
 	}
 
 	//pdu_free_queue(&c->channel);
