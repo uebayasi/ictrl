@@ -42,9 +42,8 @@ struct ictrl_state {
 	struct event		ev;
 	struct event		evt;
 	int			fd;
+	void			(*dispatch)(int, short, void *);
 };
-
-extern void (*ictrl_dispatch)(int, short, void *);
 
 #define	CONTROL_BACKLOG	5
 
@@ -52,7 +51,7 @@ void	ictrl_accept(int, short, void *);
 void	ictrl_close(struct ictrl_state *, struct ictrl_session *);
 
 struct ictrl_state *
-ictrl_init(char *path)
+ictrl_init(char *path, void (*dispatch)(int, short, void *))
 {
 	struct ictrl_state	*ctrl;
 	struct sockaddr_un	 sun;
@@ -109,6 +108,7 @@ ictrl_init(char *path)
 
 	socket_setblockmode(fd, 1);
 	ctrl->fd = fd;
+	ctrl->dispatch = dispatch;
 
 	return ctrl;
 }
@@ -173,7 +173,7 @@ ictrl_accept(int listenfd, short event, void *v)
 
 	//TAILQ_INIT(&c->channel);
 	c->fd = connfd;
-	event_set(&c->ev, connfd, EV_READ, ictrl_dispatch, c);
+	event_set(&c->ev, connfd, EV_READ, ctrl->dispatch, c);
 	event_add(&c->ev, NULL);
 }
 
