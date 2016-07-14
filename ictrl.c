@@ -242,7 +242,7 @@ ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
 			pdu_addbuf(pdu, ptr, argv[i].len, i + 1);
 		}
 
-	control_queue(ch, pdu);
+	ictrl_queue(ch, pdu);
 	return 0;
 fail:
 	pdu_free(pdu);
