@@ -32,7 +32,7 @@
 
 #include "log.h"
 
-struct control {
+struct control_session {
 	struct event		ev;
 	//struct pduq		channel;
 	int			fd;
@@ -49,7 +49,7 @@ extern void (*control_dispatch)(int, short, void *);
 #define	CONTROL_BACKLOG	5
 
 void	control_accept(int, short, void *);
-void	control_close(struct control *);
+void	control_close(struct control_session *);
 
 int
 control_init(char *path)
@@ -140,7 +140,7 @@ control_accept(int listenfd, short event, void *bula)
 	int			 connfd;
 	socklen_t		 len;
 	struct sockaddr_un	 sun;
-	struct control		*c;
+	struct control_session	*c;
 
 	event_add(&control_state->ev, NULL);
 	if ((event & EV_TIMEOUT))
@@ -164,7 +164,7 @@ control_accept(int listenfd, short event, void *bula)
 		return;
 	}
 
-	if ((c = malloc(sizeof(struct control))) == NULL) {
+	if ((c = malloc(sizeof(struct control_session))) == NULL) {
 		log_warn("control_accept");
 		close(connfd);
 		return;
@@ -177,7 +177,7 @@ control_accept(int listenfd, short event, void *bula)
 }
 
 void
-control_close(struct control *c)
+control_close(struct control_session *c)
 {
 	event_del(&c->ev);
 	close(c->fd);
