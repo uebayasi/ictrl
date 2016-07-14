@@ -31,10 +31,13 @@
 #include <unistd.h>
 
 #include "log.h"
+#include "buf.h"
+#include "ictrl.h"
 
 struct ictrl_session {
+	struct ictrl_state	*state;
 	struct event		ev;
-	//struct pduq		channel;
+	struct pduq		channel;
 	int			fd;
 };
 
@@ -49,6 +52,10 @@ struct ictrl_state {
 
 void	ictrl_accept(int, short, void *);
 void	ictrl_close(struct ictrl_state *, struct ictrl_session *);
+
+int	ictrl_compose(void *, u_int16_t, void *, size_t);
+int	ictrl_build(void *, u_int16_t, int, struct ctrldata *);
+void	ictrl_queue(void *, struct pdu *);
 
 struct ictrl_state *
 ictrl_init(char *path, void (*dispatch)(int, short, void *))
@@ -171,9 +178,10 @@ ictrl_accept(int listenfd, short event, void *v)
 		return;
 	}
 
-	//TAILQ_INIT(&c->channel);
+	TAILQ_INIT(&c->channel);
+	c->state = ctrl;
 	c->fd = connfd;
-	event_set(&c->ev, connfd, EV_READ, ctrl->dispatch, c);
+	event_set(&c->ev, connfd, EV_READ, c->state->dispatch, c);
 	event_add(&c->ev, NULL);
 }
 
@@ -189,6 +197,66 @@ ictrl_close(struct ictrl_state *ctrl, struct ictrl_session *c)
 		event_add(&ctrl->ev, NULL);
 	}
 
-	//pdu_free_queue(&c->channel);
+	pdu_free_queue(&c->channel);
 	free(c);
+}
+
+int
+ictrl_compose(void *ch, u_int16_t type, void *buf, size_t len)
+{
+	return ictrl_build(ch, type, 1, CTRLARGV({ buf, len }));
+}
+
+int
+ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
+{
+	struct pdu *pdu;
+	struct ctrlmsghdr *cmh;
+	size_t size = 0;
+	int i;
+
+	if (argc > (int)nitems(cmh->len))
+		return -1;
+
+	for (i = 0; i < argc; i++)
+		size += argv[i].len;
+	if (PDU_LEN(size) > CONTROL_READ_SIZE - PDU_LEN(sizeof(*cmh)))
+		return -1;
+
+	if ((pdu = pdu_new()) == NULL)
+		return -1;
+	if ((cmh = malloc(sizeof(*cmh))) == NULL)
+		goto fail;
+	bzero(cmh, sizeof(*cmh));
+	cmh->type = type;
+	pdu_addbuf(pdu, cmh, sizeof(*cmh), 0);
+
+	for (i = 0; i < argc; i++)
+		if (argv[i].len > 0) {
+			void *ptr;
+
+			cmh->len[i] = argv[i].len;
+			if ((ptr = pdu_alloc(argv[i].len)) == NULL)
+				goto fail;
+			memcpy(ptr, argv[i].buf, argv[i].len);
+			pdu_addbuf(pdu, ptr, argv[i].len, i + 1);
+		}
+
+	control_queue(ch, pdu);
+	return 0;
+fail:
+	pdu_free(pdu);
+	return -1;
+}
+
+void
+ictrl_queue(void *ch, struct pdu *pdu)
+{
+	struct ictrl_session *c = ch;
+
+	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
+
+	event_del(&c->ev);
+	event_set(&c->ev, c->fd, EV_READ|EV_WRITE, c->state->dispatch, c);
+	event_add(&c->ev, NULL);
 }
