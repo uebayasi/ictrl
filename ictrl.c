@@ -32,40 +32,40 @@
 
 #include "log.h"
 
-struct control_session {
+struct ictrl_session {
 	struct event		ev;
 	//struct pduq		channel;
 	int			fd;
 };
 
-struct control_state {
+struct ictrl_state {
 	struct event		ev;
 	struct event		evt;
 	int			fd;
 };
 
-extern void (*control_dispatch)(int, short, void *);
+extern void (*ictrl_dispatch)(int, short, void *);
 
 #define	CONTROL_BACKLOG	5
 
-void	control_accept(int, short, void *);
-void	control_close(struct control_state *, struct control_session *);
+void	ictrl_accept(int, short, void *);
+void	ictrl_close(struct ictrl_state *, struct ictrl_session *);
 
-struct control_state *
-control_init(char *path)
+struct ictrl_state *
+ictrl_init(char *path)
 {
-	struct control_state	*ctrl;
+	struct ictrl_state	*ctrl;
 	struct sockaddr_un	 sun;
 	int			 fd;
 	mode_t			 old_umask;
 
 	if ((ctrl = calloc(1, sizeof(*ctrl))) == NULL) {
-		log_warn("control_init: calloc");
+		log_warn("ictrl_init: calloc");
 		return NULL;
 	}
 
 	if ((fd = socket(AF_UNIX, SOCK_SEQPACKET, 0)) == -1) {
-		log_warn("control_init: socket");
+		log_warn("ictrl_init: socket");
 		return NULL;
 	}
 
@@ -73,20 +73,20 @@ control_init(char *path)
 	sun.sun_family = AF_UNIX;
 	if (strlcpy(sun.sun_path, path, sizeof(sun.sun_path)) >=
 	    sizeof(sun.sun_path)) {
-		log_warnx("control_init: path %s too long", path);
+		log_warnx("ictrl_init: path %s too long", path);
 		return NULL;
 	}
 
 	if (unlink(path) == -1)
 		if (errno != ENOENT) {
-			log_warn("control_init: unlink %s", path);
+			log_warn("ictrl_init: unlink %s", path);
 			close(fd);
 			return NULL;
 		}
 
 	old_umask = umask(S_IXUSR|S_IXGRP|S_IWOTH|S_IROTH|S_IXOTH);
 	if (bind(fd, (struct sockaddr *)&sun, sizeof(sun)) == -1) {
-		log_warn("control_init: bind: %s", path);
+		log_warn("ictrl_init: bind: %s", path);
 		close(fd);
 		umask(old_umask);
 		return NULL;
@@ -94,14 +94,14 @@ control_init(char *path)
 	umask(old_umask);
 
 	if (chmod(path, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) == -1) {
-		log_warn("control_init: chmod");
+		log_warn("ictrl_init: chmod");
 		close(fd);
 		(void)unlink(path);
 		return NULL;
 	}
 
 	if (listen(fd, CONTROL_BACKLOG) == -1) {
-		log_warn("control_init: listen");
+		log_warn("ictrl_init: listen");
 		close(fd);
 		(void)unlink(path);
 		return NULL;
@@ -114,7 +114,7 @@ control_init(char *path)
 }
 
 void
-control_cleanup(struct control_state *ctrl, char *path)
+ictrl_cleanup(struct ictrl_state *ctrl, char *path)
 {
 	if (path)
 		unlink(path);
@@ -126,23 +126,22 @@ control_cleanup(struct control_state *ctrl, char *path)
 }
 
 void
-control_event_init(struct control_state *ctrl)
+ictrl_event_init(struct ictrl_state *ctrl)
 {
-	event_set(&ctrl->ev, ctrl->fd, EV_READ,
-	    control_accept, NULL);
+	event_set(&ctrl->ev, ctrl->fd, EV_READ, ictrl_accept, NULL);
 	event_add(&ctrl->ev, NULL);
-	evtimer_set(&ctrl->evt, control_accept, ctrl);
+	evtimer_set(&ctrl->evt, ictrl_accept, ctrl);
 }
 
 /* ARGSUSED */
 void
-control_accept(int listenfd, short event, void *v)
+ictrl_accept(int listenfd, short event, void *v)
 {
-	struct control_state	*ctrl = v;
+	struct ictrl_state	*ctrl = v;
 	int			 connfd;
 	socklen_t		 len;
 	struct sockaddr_un	 sun;
-	struct control_session	*c;
+	struct ictrl_session	*c;
 
 	event_add(&ctrl->ev, NULL);
 	if ((event & EV_TIMEOUT))
@@ -162,24 +161,24 @@ control_accept(int listenfd, short event, void *v)
 			evtimer_add(&ctrl->evt, &evtpause);
 		} else if (errno != EWOULDBLOCK && errno != EINTR &&
 		    errno != ECONNABORTED)
-			log_warn("control_accept");
+			log_warn("ictrl_accept");
 		return;
 	}
 
-	if ((c = malloc(sizeof(struct control_session))) == NULL) {
-		log_warn("control_accept");
+	if ((c = malloc(sizeof(struct ictrl_session))) == NULL) {
+		log_warn("ictrl_accept");
 		close(connfd);
 		return;
 	}
 
 	//TAILQ_INIT(&c->channel);
 	c->fd = connfd;
-	event_set(&c->ev, connfd, EV_READ, control_dispatch, c);
+	event_set(&c->ev, connfd, EV_READ, ictrl_dispatch, c);
 	event_add(&c->ev, NULL);
 }
 
 void
-control_close(struct control_state *ctrl, struct control_session *c)
+ictrl_close(struct ictrl_state *ctrl, struct ictrl_session *c)
 {
 	event_del(&c->ev);
 	close(c->fd);
