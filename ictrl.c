@@ -30,12 +30,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "iscsid.h"
 #include "log.h"
 
 struct control {
 	struct event		ev;
-	struct pduq		channel;
+	//struct pduq		channel;
 	int			fd;
 };
 
@@ -45,12 +44,12 @@ struct control_state {
 	int			fd;
 } *control_state;
 
+extern void (*control_dispatch)(int, short, void *);
+
 #define	CONTROL_BACKLOG	5
 
 void	control_accept(int, short, void *);
 void	control_close(struct control *);
-void	control_dispatch(int, short, void *);
-struct pdu *control_getpdu(char *, size_t);
 
 int
 control_init(char *path)
@@ -171,7 +170,7 @@ control_accept(int listenfd, short event, void *bula)
 		return;
 	}
 
-	TAILQ_INIT(&c->channel);
+	//TAILQ_INIT(&c->channel);
 	c->fd = connfd;
 	event_set(&c->ev, connfd, EV_READ, control_dispatch, c);
 	event_add(&c->ev, NULL);
@@ -189,130 +188,6 @@ control_close(struct control *c)
 		event_add(&control_state->ev, NULL);
 	}
 
-	pdu_free_queue(&c->channel);
+	//pdu_free_queue(&c->channel);
 	free(c);
-}
-
-static char	cbuf[CONTROL_READ_SIZE];
-
-/* ARGSUSED */
-void
-control_dispatch(int fd, short event, void *bula)
-{
-	struct iovec iov[PDU_MAXIOV];
-	struct msghdr msg;
-	struct control *c = bula;
-	struct pdu *pdu;
-	ssize_t	 n;
-	unsigned int niov = 0;
-	short flags = EV_READ;
-
-	if (event & EV_TIMEOUT) {
-		log_debug("control connection (fd %d) timed out.", fd);
-		control_close(c);
-		return;
-	}
-	if (event & EV_READ) {
-		if ((n = recv(fd, cbuf, sizeof(cbuf), 0)) == -1 &&
-		    !(errno == EAGAIN || errno == EINTR)) {
-			control_close(c);
-			return;
-		}
-		if (n == 0) {
-			control_close(c);
-			return;
-		}
-		pdu = control_getpdu(cbuf, n);
-		if (!pdu) {
-			log_debug("control connection (fd %d) bad msg.", fd);
-			control_close(c);
-			return;
-		}
-		iscsid_ctrl_dispatch(c, pdu);
-	}
-	if (event & EV_WRITE) {
-		if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
-			for (niov = 0; niov < PDU_MAXIOV; niov++) {
-				iov[niov].iov_base = pdu->iov[niov].iov_base;
-				iov[niov].iov_len = pdu->iov[niov].iov_len;
-			}
-			bzero(&msg, sizeof(msg));
-			msg.msg_iov = iov;
-			msg.msg_iovlen = niov;
-			if (sendmsg(fd, &msg, 0) == -1) {
-				if (errno == EAGAIN || errno == ENOBUFS)
-					goto requeue;
-				control_close(c);
-				return;
-			}
-			TAILQ_REMOVE(&c->channel, pdu, entry);
-		}
-	}
-requeue:
-	if (!TAILQ_EMPTY(&c->channel))
-		flags |= EV_WRITE;
-
-	event_del(&c->ev);
-	event_set(&c->ev, fd, flags, control_dispatch, c);
-	event_add(&c->ev, NULL);
-}
-
-struct pdu *
-control_getpdu(char *buf, size_t len)
-{
-	struct pdu *p;
-	struct ctrlmsghdr *cmh;
-	void *data;
-	size_t n;
-	int i;
-
-	if (len < sizeof(*cmh))
-		return NULL;
-
-	if (!(p = pdu_new()))
-		return NULL;
-
-	n = sizeof(*cmh);
-	cmh = pdu_alloc(n);
-	memcpy(cmh, buf, n);
-	buf += n;
-	len -= n;
-
-	if (pdu_addbuf(p, cmh, n, 0)) {
-		free(cmh);
-fail:
-		pdu_free(p);
-		return NULL;
-	}
-
-	for (i = 0; i < 3; i++) {
-		n = cmh->len[i];
-		if (n == 0)
-			continue;
-		if (PDU_LEN(n) > len)
-			goto fail;
-		if (!(data = pdu_alloc(n)))
-			goto fail;
-		memcpy(data, buf, n);
-		if (pdu_addbuf(p, data, n, i + 1)) {
-			free(data);
-			goto fail;
-		}
-		buf += PDU_LEN(n);
-		len -= PDU_LEN(n);
-	}
-
-	return p;
-}
-
-void
-control_queue(void *ch, struct pdu *pdu)
-{
-	struct control *c = ch;
-
-	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
-
-	event_del(&c->ev);
-	event_set(&c->ev, c->fd, EV_READ|EV_WRITE, control_dispatch, c);
-	event_add(&c->ev, NULL);
 }
