@@ -17,11 +17,11 @@ struct test_context {
 
 __dead void	usage(void);
 
-void test_init(struct server_context *);
-void test_start(struct server_context *);
-void test_stop(struct server_context *);
-void test_shutdown(struct server_context *);
-int test_isdown(struct server_context *);
+void test_init(void *);
+void test_start(void *);
+void test_stop(void *);
+void test_shutdown(void *);
+int test_isdown(void *);
 
 int
 main(int argc, char *argv[])
@@ -100,41 +100,41 @@ usage(void)
 }
 
 void
-test_init(struct server_context *ctx)
+test_init(void *data)
 {
-	struct test_context *test = ctx->data;
+	struct test_context *test = data;
 
 	test->ctrl = ictrl_init(test->ctrl_cf);
 }
 
 void
-test_start(struct server_context *ctx)
+test_start(void *data)
 {
-	struct test_context *test = ctx->data;
+	struct test_context *test = data;
 
 	ictrl_event_init(test->ctrl);
 }
 
 void
-test_stop(struct server_context *ctx)
+test_stop(void *data)
 {
-	struct test_context *test = ctx->data;
+	struct test_context *test = data;
 
 	ictrl_cleanup(test->ctrl);
 }
 
 void
-test_shutdown(struct server_context *ctx)
+test_shutdown(void *data)
 {
-	struct test_context *test = ctx->data;
+	struct test_context *test = data;
 
 	// XXX
 }
 
 int
-test_isdown(struct server_context *ctx)
+test_isdown(void *data)
 {
-	struct test_context *test = ctx->data;
+	struct test_context *test = data;
 
 	// XXX
 

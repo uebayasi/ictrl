@@ -15,11 +15,11 @@ struct server_config {
 };
 
 struct server_ops {
-	void		(*init)(struct server_context *);
-	void		(*start)(struct server_context *);
-	void		(*stop)(struct server_context *);
-	void		(*shutdown)(struct server_context *);
-	int		(*isdown)(struct server_context *);
+	void		(*init)(void *);
+	void		(*start)(void *);
+	void		(*stop)(void *);
+	void		(*shutdown)(void *);
+	int		(*isdown)(void *);
 };
 
 struct server_context {
