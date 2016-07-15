@@ -304,15 +304,15 @@ ictrl_client_fini(struct ictrl_session *c)
 #define CTRLARGV(x...)	((struct ictrl_msgbuf []){ x })
 
 int
-ictrl_compose(void *ch, u_int16_t type, void *buf, size_t len)
+ictrl_compose(struct ictrl_session *c, u_int16_t type, void *buf, size_t len)
 {
-	return ictrl_build(ch, type, 1, CTRLARGV({ buf, len }));
+	return ictrl_build(c, type, 1, CTRLARGV({ buf, len }));
 }
 
 int
-ictrl_build(void *ch, u_int16_t type, int argc, struct ictrl_msgbuf *argv)
+ictrl_build(struct ictrl_session *c, u_int16_t type, int argc,
+    struct ictrl_msgbuf *argv)
 {
-	struct ictrl_session *c = ch;
 	struct pdu *pdu;
 	struct ictrl_msghdr *cmh;
 	size_t size = 0;

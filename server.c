@@ -84,7 +84,7 @@ server_drop(struct server_context *ctx)
 
 	int name[] = { CTL_KERN, KERN_PROC_NOBROADCASTKILL, 0 };
 	name[2] = getpid();
-	if (sysctl(name, 3, NULL, 0, &ctx->config->nobkill,
+	if (sysctl(name, nitems(name), NULL, 0, &ctx->config->nobkill,
 	    sizeof(ctx->config->nobkill)) != 0)
 		fatal("sysctl");
 

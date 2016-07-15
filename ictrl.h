@@ -45,8 +45,10 @@ struct ictrl_session *
 		ictrl_client_init(struct ictrl_config *);
 void		ictrl_client_fini(struct ictrl_session *);
 
-int		ictrl_compose(void *, u_int16_t, void *, size_t);
-int		ictrl_build(void *, u_int16_t, int, struct ictrl_msgbuf *);
+int		ictrl_compose(struct ictrl_session *, u_int16_t, void *,
+		    size_t);
+int		ictrl_build(struct ictrl_session *, u_int16_t, int,
+		    struct ictrl_msgbuf *);
 int		ictrl_send(struct ictrl_session *);
 struct pdu	*ictrl_recv(struct ictrl_session *);
 
