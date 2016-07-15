@@ -17,12 +17,12 @@ struct test_context {
 
 __dead void	usage(void);
 
-void test_init(void *);
-void test_fini(void *);
-void test_start(void *);
-void test_stop(void *);
-void test_shutdown(void *);
-int test_isdown(void *);
+void test_server_init(void *);
+void test_server_fini(void *);
+void test_server_start(void *);
+void test_server_stop(void *);
+void test_server_shutdown(void *);
+int test_shutdown_isdown(void *);
 void test_proc(struct ictrl_session *, struct pdu *);
 
 int
@@ -32,12 +32,12 @@ main(int argc, char *argv[])
 
 	struct server_context *ctx;
 	struct server_ops ops = {
-		.init = test_init,
-		.fini = test_fini,
-		.start = test_start,
-		.stop = test_stop,
-		.shutdown = test_shutdown,
-		.isdown = test_isdown
+		.init = test_server_init,
+		.fini = test_server_fini,
+		.start = test_server_start,
+		.stop = test_server_stop,
+		.shutdown = test_server_shutdown,
+		.isdown = test_shutdown_isdown
 	};
 	struct server_config cf = {
 		.sockname = "/var/run/hoge.sock",
@@ -105,7 +105,7 @@ usage(void)
 }
 
 void
-test_init(void *data)
+test_server_init(void *data)
 {
 	struct test_context *test = data;
 
@@ -113,7 +113,7 @@ test_init(void *data)
 }
 
 void
-test_fini(void *data)
+test_server_fini(void *data)
 {
 	struct test_context *test = data;
 
@@ -121,7 +121,7 @@ test_fini(void *data)
 }
 
 void
-test_start(void *data)
+test_server_start(void *data)
 {
 	struct test_context *test = data;
 
@@ -129,7 +129,7 @@ test_start(void *data)
 }
 
 void
-test_stop(void *data)
+test_server_stop(void *data)
 {
 	struct test_context *test = data;
 
@@ -137,7 +137,7 @@ test_stop(void *data)
 }
 
 void
-test_shutdown(void *data)
+test_server_shutdown(void *data)
 {
 	struct test_context *test = data;
 
@@ -145,7 +145,7 @@ test_shutdown(void *data)
 }
 
 int
-test_isdown(void *data)
+test_shutdown_isdown(void *data)
 {
 	struct test_context *test = data;
 

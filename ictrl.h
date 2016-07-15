@@ -54,6 +54,7 @@ struct pdu	*ictrl_recv(struct ictrl_session *);
  * Common control message header.
  * A message can consist of up to 3 parts with specified length.
  */
+
 struct ictrl_msghdr {
 	u_int16_t	type;
 	u_int16_t	len[3];
