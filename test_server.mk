@@ -1,5 +1,5 @@
-PROG=	test
-SRCS=	test.c
+PROG=	test_server
+SRCS=	test_server.c
 
 LDADD=	-L. -lictrl \
 	-levent \
