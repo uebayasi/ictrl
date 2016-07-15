@@ -31,6 +31,7 @@
 #include <unistd.h>
 
 #include "buf.h"
+#include "ictrl.h"
 
 struct pdu *
 pdu_new(void)

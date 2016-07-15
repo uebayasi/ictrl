@@ -46,7 +46,6 @@ struct ictrl_state {
 	struct event		ev;
 	struct event		evt;
 	int			fd;
-	void			(*dispatch)(int, short, void *);
 	void			(*procpdu)(struct ictrl_session *,
 				    struct pdu *);
 };
@@ -60,8 +59,10 @@ int	ictrl_compose(void *, u_int16_t, void *, size_t);
 int	ictrl_build(void *, u_int16_t, int, struct ctrldata *);
 void	ictrl_queue(void *, struct pdu *);
 
+void	ictrl_dispatch(int, short, void *);
+
 struct ictrl_state *
-ictrl_init(char *path, void (*dispatch)(int, short, void *))
+ictrl_init(char *path)
 {
 	struct ictrl_state	*ctrl;
 	struct sockaddr_un	 sun;
@@ -118,7 +119,6 @@ ictrl_init(char *path, void (*dispatch)(int, short, void *))
 
 	socket_setblockmode(fd, 1);
 	ctrl->fd = fd;
-	ctrl->dispatch = dispatch;
 
 	return ctrl;
 }
@@ -184,7 +184,7 @@ ictrl_accept(int listenfd, short event, void *v)
 	TAILQ_INIT(&c->channel);
 	c->state = ctrl;
 	c->fd = connfd;
-	event_set(&c->ev, connfd, EV_READ, c->state->dispatch, c);
+	event_set(&c->ev, connfd, EV_READ, ictrl_dispatch, c);
 	event_add(&c->ev, NULL);
 }
 
@@ -272,8 +272,10 @@ ictrl_dispatch(int fd, short event, void *v)
 		return;
 	}
 	if (event & EV_READ) {
-		if ((pdu = ictrl_recv(fd, c)) == NULL)
+		if ((pdu = ictrl_recv(fd, c)) == NULL) {
+			ictrl_close(c);
 			return;
+		}
 		(*c->state->procpdu)(c, pdu);
 	}
 	if (event & EV_WRITE) {
@@ -281,6 +283,7 @@ ictrl_dispatch(int fd, short event, void *v)
 		case EAGAIN:
 			goto requeue;
 		case -1:
+			ictrl_close(c);
 			return;
 		default:
 			break;
@@ -303,7 +306,7 @@ ictrl_queue(void *ch, struct pdu *pdu)
 	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
 
 	event_del(&c->ev);
-	event_set(&c->ev, c->fd, EV_READ|EV_WRITE, c->state->dispatch, c);
+	event_set(&c->ev, c->fd, EV_READ|EV_WRITE, ictrl_dispatch, c);
 	event_add(&c->ev, NULL);
 }
 
@@ -326,7 +329,6 @@ ictrl_send(int fd, struct ictrl_session *c)
 		if (sendmsg(fd, &msg, 0) == -1) {
 			if (errno == EAGAIN || errno == ENOBUFS)
 				return EAGAIN;
-			ictrl_close(c);
 			return -1;
 		}
 		TAILQ_REMOVE(&c->channel, pdu, entry);
@@ -342,19 +344,11 @@ ictrl_recv(int fd, struct ictrl_session *c)
 	ssize_t n;
 
 	if ((n = recv(fd, c->buf, sizeof(c->buf), 0)) == -1 &&
-	    !(errno == EAGAIN || errno == EINTR)) {
-		ictrl_close(c);
+	    !(errno == EAGAIN || errno == EINTR))
 		return NULL;
-	}
-	if (n == 0) {
-		ictrl_close(c);
+
+	if (n == 0)
 		return NULL;
-	}
-	pdu = pdu_get(c->buf, n);
-	if (!pdu) {
-		log_debug("control connection (fd %d) bad msg.", fd);
-		ictrl_close(c);
-		return NULL;
-	}
-	return pdu;
+
+	return pdu_get(c->buf, n);
 }
