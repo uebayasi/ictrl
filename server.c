@@ -17,11 +17,8 @@
  */
 
 #include <sys/param.h>	/* nitems */
-#include <sys/queue.h>
-#include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
-#include <sys/uio.h>
 
 #include <err.h>
 #include <event.h>

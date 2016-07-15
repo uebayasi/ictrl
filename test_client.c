@@ -32,7 +32,7 @@ main(int argc, char *argv[])
 	pdu_free(pdu);
 	// }
 
-	ictrl_client_close(c);
+	ictrl_client_fini(c);
 
 	return 0;
 }

@@ -38,13 +38,17 @@
 
 #define	CONTROL_BACKLOG	5
 
-static void	ictrl_accept(int, short, void *);
-static void	ictrl_dispatch(int, short, void *);
-static void	ictrl_close(struct ictrl_session *);
-static void	ictrl_schedule(struct ictrl_session *);
+static void	ictrl_server_accept(int, short, void *);
+static void	ictrl_server_dispatch(int, short, void *);
+static void	ictrl_server_close(struct ictrl_session *);
+static void	ictrl_server_schedule(struct ictrl_session *);
+
+/*
+ * API for server
+ */
 
 struct ictrl_state *
-ictrl_init(struct ictrl_config *cf)
+ictrl_server_init(struct ictrl_config *cf)
 {
 	struct ictrl_state	*ctrl;
 	struct sockaddr_un	 sun;
@@ -114,7 +118,7 @@ ictrl_init(struct ictrl_config *cf)
 }
 
 void
-ictrl_fini(struct ictrl_state *ctrl)
+ictrl_server_fini(struct ictrl_state *ctrl)
 {
 	if (ctrl->config->path)
 		unlink(ctrl->config->path);
@@ -123,19 +127,126 @@ ictrl_fini(struct ictrl_state *ctrl)
 }
 
 void
-ictrl_start(struct ictrl_state *ctrl)
+ictrl_server_start(struct ictrl_state *ctrl)
 {
-	event_set(&ctrl->ev, ctrl->fd, EV_READ, ictrl_accept, ctrl);
+	event_set(&ctrl->ev, ctrl->fd, EV_READ, ictrl_server_accept, ctrl);
 	event_add(&ctrl->ev, NULL);
-	evtimer_set(&ctrl->evt, ictrl_accept, ctrl);
+	evtimer_set(&ctrl->evt, ictrl_server_accept, ctrl);
 }
 
 void
-ictrl_stop(struct ictrl_state *ctrl)
+ictrl_server_stop(struct ictrl_state *ctrl)
 {
 	event_del(&ctrl->ev);
 	event_del(&ctrl->evt);
 }
+
+static void
+ictrl_server_accept(int listenfd, short event, void *v)
+{
+	struct ictrl_state	*ctrl = v;
+	int			 connfd;
+	socklen_t		 len;
+	struct sockaddr_un	 sun;
+	struct ictrl_session	*c;
+
+	event_add(&ctrl->ev, NULL);
+	if ((event & EV_TIMEOUT))
+		return;
+
+	len = sizeof(sun);
+	if ((connfd = accept(listenfd,
+	    (struct sockaddr *)&sun, &len)) == -1) {
+		/*
+		 * Pause accept if we are out of file descriptors, or
+		 * libevent will haunt us here too.
+		 */
+		if (errno == ENFILE || errno == EMFILE) {
+			struct timeval evtpause = { 1, 0 };
+
+			event_del(&ctrl->ev);
+			evtimer_add(&ctrl->evt, &evtpause);
+		} else if (errno != EWOULDBLOCK && errno != EINTR &&
+		    errno != ECONNABORTED)
+			log_warn("ictrl_server_accept");
+		return;
+	}
+
+	if ((c = malloc(sizeof(struct ictrl_session))) == NULL) {
+		log_warn("ictrl_server_accept");
+		close(connfd);
+		return;
+	}
+
+	TAILQ_INIT(&c->channel);
+	c->state = ctrl;
+	c->fd = connfd;
+	ictrl_server_schedule(c);
+}
+
+static void
+ictrl_server_dispatch(int fd, short event, void *v)
+{
+	struct ictrl_session *c = v;
+	struct pdu *pdu;
+	short flags = EV_READ;
+
+	if (event & EV_TIMEOUT) {
+		log_debug("control connection (fd %d) timed out.", fd);
+		ictrl_server_close(c);
+		return;
+	}
+	if (event & EV_READ) {
+		if ((pdu = ictrl_recv(c)) == NULL) {
+			ictrl_server_close(c);
+			return;
+		}
+		(*c->state->config->proc)(c, pdu);
+	}
+	if (event & EV_WRITE) {
+		switch (ictrl_send(c)) {
+		case -1:
+			ictrl_server_close(c);
+			return;
+		case EAGAIN:
+		default:
+			break;
+		}
+	}
+	ictrl_server_schedule(c);
+}
+
+static void
+ictrl_server_close(struct ictrl_session *c)
+{
+	event_del(&c->ev);
+	close(c->fd);
+
+	/* Some file descriptors are available again. */
+	if (evtimer_pending(&c->state->evt, NULL)) {
+		evtimer_del(&c->state->evt);
+		event_add(&c->state->ev, NULL);
+	}
+
+	pdu_free_queue(&c->channel);
+	free(c);
+}
+
+static void
+ictrl_server_schedule(struct ictrl_session *c)
+{
+	short flags = EV_READ;
+
+	if (!TAILQ_EMPTY(&c->channel))
+		flags |= EV_WRITE;
+	event_del(&c->ev);
+	event_set(&c->ev, c->fd, flags, ictrl_server_dispatch, c);
+	event_add(&c->ev, NULL);
+}
+
+/*
+ * API for client
+ */
 
 struct ictrl_session *
 ictrl_client_init(struct ictrl_config *cf)
@@ -177,7 +288,7 @@ ictrl_client_init(struct ictrl_config *cf)
 }
 
 void
-ictrl_client_close(struct ictrl_session *c)
+ictrl_client_fini(struct ictrl_session *c)
 {
 	struct ictrl_state	*ctrl = c->state;
 
@@ -186,96 +297,9 @@ ictrl_client_close(struct ictrl_session *c)
 	free(c);
 }
 
-static void
-ictrl_accept(int listenfd, short event, void *v)
-{
-	struct ictrl_state	*ctrl = v;
-	int			 connfd;
-	socklen_t		 len;
-	struct sockaddr_un	 sun;
-	struct ictrl_session	*c;
-
-	event_add(&ctrl->ev, NULL);
-	if ((event & EV_TIMEOUT))
-		return;
-
-	len = sizeof(sun);
-	if ((connfd = accept(listenfd,
-	    (struct sockaddr *)&sun, &len)) == -1) {
-		/*
-		 * Pause accept if we are out of file descriptors, or
-		 * libevent will haunt us here too.
-		 */
-		if (errno == ENFILE || errno == EMFILE) {
-			struct timeval evtpause = { 1, 0 };
-
-			event_del(&ctrl->ev);
-			evtimer_add(&ctrl->evt, &evtpause);
-		} else if (errno != EWOULDBLOCK && errno != EINTR &&
-		    errno != ECONNABORTED)
-			log_warn("ictrl_accept");
-		return;
-	}
-
-	if ((c = malloc(sizeof(struct ictrl_session))) == NULL) {
-		log_warn("ictrl_accept");
-		close(connfd);
-		return;
-	}
-
-	TAILQ_INIT(&c->channel);
-	c->state = ctrl;
-	c->fd = connfd;
-	ictrl_schedule(c);
-}
-
-static void
-ictrl_dispatch(int fd, short event, void *v)
-{
-	struct ictrl_session *c = v;
-	struct pdu *pdu;
-	short flags = EV_READ;
-
-	if (event & EV_TIMEOUT) {
-		log_debug("control connection (fd %d) timed out.", fd);
-		ictrl_close(c);
-		return;
-	}
-	if (event & EV_READ) {
-		if ((pdu = ictrl_recv(c)) == NULL) {
-			ictrl_close(c);
-			return;
-		}
-		(*c->state->config->proc)(c, pdu);
-	}
-	if (event & EV_WRITE) {
-		switch (ictrl_send(c)) {
-		case -1:
-			ictrl_close(c);
-			return;
-		case EAGAIN:
-		default:
-			break;
-		}
-	}
-	ictrl_schedule(c);
-}
-
-static void
-ictrl_close(struct ictrl_session *c)
-{
-	event_del(&c->ev);
-	close(c->fd);
-
-	/* Some file descriptors are available again. */
-	if (evtimer_pending(&c->state->evt, NULL)) {
-		evtimer_del(&c->state->evt);
-		event_add(&c->state->ev, NULL);
-	}
-
-	pdu_free_queue(&c->channel);
-	free(c);
-}
+/*
+ * API for both server and client
+ */
 
 int
 ictrl_compose(void *ch, u_int16_t type, void *buf, size_t len)
@@ -325,24 +349,12 @@ ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
 	 * Schedule a next event for server.
 	 */
 	if (c->fd != -1)
-		ictrl_schedule(c);
+		ictrl_server_schedule(c);
 
 	return 0;
 fail:
 	pdu_free(pdu);
 	return -1;
-}
-
-static void
-ictrl_schedule(struct ictrl_session *c)
-{
-	short flags = EV_READ;
-
-	if (!TAILQ_EMPTY(&c->channel))
-		flags |= EV_WRITE;
-	event_del(&c->ev);
-	event_set(&c->ev, c->fd, flags, ictrl_dispatch, c);
-	event_add(&c->ev, NULL);
 }
 
 int

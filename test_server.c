@@ -109,7 +109,7 @@ test_init(void *data)
 {
 	struct test_context *test = data;
 
-	test->ctrl = ictrl_init(test->ctrl_cf);
+	test->ctrl = ictrl_server_init(test->ctrl_cf);
 }
 
 void
@@ -117,7 +117,7 @@ test_fini(void *data)
 {
 	struct test_context *test = data;
 
-	ictrl_fini(test->ctrl);
+	ictrl_server_fini(test->ctrl);
 }
 
 void
@@ -125,7 +125,7 @@ test_start(void *data)
 {
 	struct test_context *test = data;
 
-	ictrl_start(test->ctrl);
+	ictrl_server_start(test->ctrl);
 }
 
 void
@@ -133,7 +133,7 @@ test_stop(void *data)
 {
 	struct test_context *test = data;
 
-	ictrl_stop(test->ctrl);
+	ictrl_server_stop(test->ctrl);
 }
 
 void

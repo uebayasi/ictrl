@@ -22,28 +22,28 @@ struct ictrl_config {
 
 struct ictrl_session {
 	struct ictrl_state	*state;
-	struct event		ev;
 	struct pduq		channel;
-	int			fd;	/* accept fd */
 	char			buf[CONTROL_READ_SIZE];
+	int			fd;	/* accept fd; only for server */
+	struct event		ev;	/* dispatch; only for server */
 };
 
 struct ictrl_state {
 	struct ictrl_config	*config;
-	struct event		ev;
-	struct event		evt;
 	int			fd;	/* socket fd */
+	struct event		ev;	/* accept; only for server */
+	struct event		evt;	/* accept; only for server */
 };
 
 struct ictrl_state *
-		ictrl_init(struct ictrl_config *);
-void		ictrl_fini(struct ictrl_state *);
-void		ictrl_start(struct ictrl_state *);
-void		ictrl_stop(struct ictrl_state *);
+		ictrl_server_init(struct ictrl_config *);
+void		ictrl_server_fini(struct ictrl_state *);
+void		ictrl_server_start(struct ictrl_state *);
+void		ictrl_server_stop(struct ictrl_state *);
 
 struct ictrl_session *
 		ictrl_client_init(struct ictrl_config *);
-void		ictrl_client_close(struct ictrl_session *);
+void		ictrl_client_fini(struct ictrl_session *);
 
 int		ictrl_compose(void *, u_int16_t, void *, size_t);
 int		ictrl_build(void *, u_int16_t, int, struct ctrldata *);
