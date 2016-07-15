@@ -39,6 +39,8 @@ struct control {
 	int		fd;
 } control;
 
+struct pdu *ctl_getpdu(char *, size_t);
+
 void
 ictrl_connect(char *sockname)
 {
@@ -67,6 +69,41 @@ void
 ictrl_queue(void *ch, struct pdu *pdu)
 {
 	TAILQ_INSERT_TAIL(&control.channel, pdu, entry);
+}
+
+int
+ctl_sendpdu(int fd, struct pdu *pdu)
+{
+	struct iovec iov[PDU_MAXIOV];
+	struct msghdr msg;
+	unsigned int niov = 0;
+
+	for (niov = 0; niov < PDU_MAXIOV; niov++) {
+		iov[niov].iov_base = pdu->iov[niov].iov_base;
+		iov[niov].iov_len = pdu->iov[niov].iov_len;
+	}
+	bzero(&msg, sizeof(msg));
+	msg.msg_iov = iov;
+	msg.msg_iovlen = niov;
+	if (sendmsg(fd, &msg, 0) == -1)
+		return -1;
+	return 0;
+}
+
+struct pdu *pdu;
+ctl_recvpdu(int fd, char *buf, size_t buflen)
+{
+	struct ctrlmsghdr *cmh;
+	ssize_t n;
+
+	if ((n = recv(fd, buf, buflen, 0)) == -1 &&
+	    !(errno == EAGAIN || errno == EINTR))
+		err(1, "recv");
+
+	if (n == 0)
+		errx(1, "connection to iscsid closed");
+
+	return ctl_getpdu(buf, n);
 }
 
 struct pdu *
@@ -115,23 +152,4 @@ fail:
 	}
 
 	return p;
-}
-
-int
-ctl_sendpdu(int fd, struct pdu *pdu)
-{
-	struct iovec iov[PDU_MAXIOV];
-	struct msghdr msg;
-	unsigned int niov = 0;
-
-	for (niov = 0; niov < PDU_MAXIOV; niov++) {
-		iov[niov].iov_base = pdu->iov[niov].iov_base;
-		iov[niov].iov_len = pdu->iov[niov].iov_len;
-	}
-	bzero(&msg, sizeof(msg));
-	msg.msg_iov = iov;
-	msg.msg_iovlen = niov;
-	if (sendmsg(fd, &msg, 0) == -1)
-		return -1;
-	return 0;
 }

@@ -39,6 +39,7 @@ struct ictrl_session {
 	struct event		ev;
 	struct pduq		channel;
 	int			fd;
+	char			buf[CONTROL_READ_SIZE];
 };
 
 struct ictrl_state {
@@ -51,7 +52,7 @@ struct ictrl_state {
 #define	CONTROL_BACKLOG	5
 
 void	ictrl_accept(int, short, void *);
-void	ictrl_close(struct ictrl_state *, struct ictrl_session *);
+void	ictrl_close(struct ictrl_session *);
 
 int	ictrl_compose(void *, u_int16_t, void *, size_t);
 int	ictrl_build(void *, u_int16_t, int, struct ctrldata *);
@@ -186,15 +187,15 @@ ictrl_accept(int listenfd, short event, void *v)
 }
 
 void
-ictrl_close(struct ictrl_state *ctrl, struct ictrl_session *c)
+ictrl_close(struct ictrl_session *c)
 {
 	event_del(&c->ev);
 	close(c->fd);
 
 	/* Some file descriptors are available again. */
-	if (evtimer_pending(&ctrl->evt, NULL)) {
-		evtimer_del(&ctrl->evt);
-		event_add(&ctrl->ev, NULL);
+	if (evtimer_pending(&c->state->evt, NULL)) {
+		evtimer_del(&c->state->evt);
+		event_add(&c->state->ev, NULL);
 	}
 
 	pdu_free_queue(&c->channel);
@@ -247,6 +248,117 @@ ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
 fail:
 	pdu_free(pdu);
 	return -1;
+}
+
+struct pdu *ictrl_getpdu(char *, size_t);
+
+void
+ictrl_dispatch(int fd, short event, void *v)
+{
+	struct iovec iov[PDU_MAXIOV];
+	struct msghdr msg;
+	struct ictrl_session *c = v;
+	struct pdu *pdu;
+	ssize_t	 n;
+	unsigned int niov = 0;
+	short flags = EV_READ;
+
+	if (event & EV_TIMEOUT) {
+		log_debug("control connection (fd %d) timed out.", fd);
+		ictrl_close(c);
+		return;
+	}
+	if (event & EV_READ) {
+		if ((n = recv(fd, c->buf, sizeof(c->buf), 0)) == -1 &&
+		    !(errno == EAGAIN || errno == EINTR)) {
+			ictrl_close(c);
+			return;
+		}
+		if (n == 0) {
+			ictrl_close(c);
+			return;
+		}
+		pdu = ictrl_getpdu(c->buf, n);
+		if (!pdu) {
+			log_debug("control connection (fd %d) bad msg.", fd);
+			ictrl_close(c);
+			return;
+		}
+		//iscsid_ctrl_dispatch(c, pdu);
+	}
+	if (event & EV_WRITE) {
+		if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
+			for (niov = 0; niov < PDU_MAXIOV; niov++) {
+				iov[niov].iov_base = pdu->iov[niov].iov_base;
+				iov[niov].iov_len = pdu->iov[niov].iov_len;
+			}
+			bzero(&msg, sizeof(msg));
+			msg.msg_iov = iov;
+			msg.msg_iovlen = niov;
+			if (sendmsg(fd, &msg, 0) == -1) {
+				if (errno == EAGAIN || errno == ENOBUFS)
+					goto requeue;
+				ictrl_close(c);
+				return;
+			}
+			TAILQ_REMOVE(&c->channel, pdu, entry);
+		}
+	}
+requeue:
+	if (!TAILQ_EMPTY(&c->channel))
+		flags |= EV_WRITE;
+
+	event_del(&c->ev);
+	event_set(&c->ev, fd, flags, ictrl_dispatch, c);
+	event_add(&c->ev, NULL);
+}
+
+struct pdu *
+ictrl_getpdu(char *buf, size_t len)
+{
+	struct pdu *p;
+	struct ctrlmsghdr *cmh;
+	void *data;
+	size_t n;
+	int i;
+
+	if (len < sizeof(*cmh))
+		return NULL;
+
+	if (!(p = pdu_new()))
+		return NULL;
+
+	n = sizeof(*cmh);
+	cmh = pdu_alloc(n);
+	memcpy(cmh, buf, n);
+	buf += n;
+	len -= n;
+
+	if (pdu_addbuf(p, cmh, n, 0)) {
+		free(cmh);
+fail:
+		pdu_free(p);
+		return NULL;
+	}
+
+	for (i = 0; i < 3; i++) {
+		n = cmh->len[i];
+		if (n == 0)
+			continue;
+		if (PDU_LEN(n) > len)
+			goto fail;
+		if (!(data = pdu_alloc(n)))
+			goto fail;
+		memcpy(data, buf, n);
+		if (pdu_addbuf(p, data, n, i + 1)) {
+			free(data);
+			goto fail;
+		}
+		buf += PDU_LEN(n);
+		len -= PDU_LEN(n);
+	}
+
+	return p;
 }
 
 void
