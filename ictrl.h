@@ -46,8 +46,8 @@ void		ictrl_client_close(struct ictrl_session *);
 
 int		ictrl_compose(void *, u_int16_t, void *, size_t);
 int		ictrl_build(void *, u_int16_t, int, struct ctrldata *);
-int		ictrl_send(int, struct ictrl_session *);
-struct pdu	*ictrl_recv(int, struct ictrl_session *);
+int		ictrl_send(struct ictrl_session *);
+struct pdu	*ictrl_recv(struct ictrl_session *);
 
 /*
  * Common control message header.

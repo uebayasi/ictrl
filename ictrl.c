@@ -241,14 +241,14 @@ ictrl_dispatch(int fd, short event, void *v)
 		return;
 	}
 	if (event & EV_READ) {
-		if ((pdu = ictrl_recv(fd, c)) == NULL) {
+		if ((pdu = ictrl_recv(c)) == NULL) {
 			ictrl_close(c);
 			return;
 		}
 		(*c->state->config->proc)(c, pdu);
 	}
 	if (event & EV_WRITE) {
-		switch (ictrl_send(fd, c)) {
+		switch (ictrl_send(c)) {
 		case -1:
 			ictrl_close(c);
 			return;
@@ -340,12 +340,13 @@ ictrl_schedule(struct ictrl_session *c)
 }
 
 int
-ictrl_send(int fd, struct ictrl_session *c)
+ictrl_send(struct ictrl_session *c)
 {
 	struct iovec iov[PDU_MAXIOV];
 	struct msghdr msg;
 	struct pdu *pdu;
 	unsigned int niov = 0;
+	int fd = (c->fd != -1) ? c->fd : c->state->fd;
 
 	if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
 		for (niov = 0; niov < PDU_MAXIOV; niov++) {
@@ -366,9 +367,10 @@ ictrl_send(int fd, struct ictrl_session *c)
 }
 
 struct pdu *
-ictrl_recv(int fd, struct ictrl_session *c)
+ictrl_recv(struct ictrl_session *c)
 {
 	ssize_t n;
+	int fd = (c->fd != -1) ? c->fd : c->state->fd;
 
 	if ((n = recv(fd, c->buf, sizeof(c->buf), 0)) == -1 &&
 	    !(errno == EAGAIN || errno == EINTR))

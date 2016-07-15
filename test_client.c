@@ -19,8 +19,8 @@ main(int argc, char *argv[])
 
 	// {
 	ictrl_compose(c, 123, msg, 5);
-	ictrl_send(c->state->fd, c);
-	pdu = ictrl_recv(c->state->fd, c);
+	ictrl_send(c);
+	pdu = ictrl_recv(c);
 	cmh = pdu_getbuf(pdu, NULL, 0);
 	switch (cmh->type) {
 	case 456:
