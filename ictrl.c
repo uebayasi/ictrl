@@ -47,6 +47,8 @@ struct ictrl_state {
 	struct event		evt;
 	int			fd;
 	void			(*dispatch)(int, short, void *);
+	void			(*procpdu)(struct ictrl_session *,
+				    struct pdu *);
 };
 
 #define	CONTROL_BACKLOG	5
@@ -251,6 +253,8 @@ fail:
 }
 
 struct pdu *ictrl_getpdu(char *, size_t);
+int ictrl_send(int, struct ictrl_session *);
+struct pdu *ictrl_recv(int, struct ictrl_session *);
 
 void
 ictrl_dispatch(int fd, short event, void *v)
@@ -259,7 +263,7 @@ ictrl_dispatch(int fd, short event, void *v)
 	struct msghdr msg;
 	struct ictrl_session *c = v;
 	struct pdu *pdu;
-	ssize_t	 n;
+	ssize_t n;
 	unsigned int niov = 0;
 	short flags = EV_READ;
 
@@ -269,39 +273,18 @@ ictrl_dispatch(int fd, short event, void *v)
 		return;
 	}
 	if (event & EV_READ) {
-		if ((n = recv(fd, c->buf, sizeof(c->buf), 0)) == -1 &&
-		    !(errno == EAGAIN || errno == EINTR)) {
-			ictrl_close(c);
+		if ((pdu = ictrl_recv(fd, c)) == NULL)
 			return;
-		}
-		if (n == 0) {
-			ictrl_close(c);
-			return;
-		}
-		pdu = ictrl_getpdu(c->buf, n);
-		if (!pdu) {
-			log_debug("control connection (fd %d) bad msg.", fd);
-			ictrl_close(c);
-			return;
-		}
-		//iscsid_ctrl_dispatch(c, pdu);
+		(*c->state->procpdu)(c, pdu);
 	}
 	if (event & EV_WRITE) {
-		if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
-			for (niov = 0; niov < PDU_MAXIOV; niov++) {
-				iov[niov].iov_base = pdu->iov[niov].iov_base;
-				iov[niov].iov_len = pdu->iov[niov].iov_len;
-			}
-			bzero(&msg, sizeof(msg));
-			msg.msg_iov = iov;
-			msg.msg_iovlen = niov;
-			if (sendmsg(fd, &msg, 0) == -1) {
-				if (errno == EAGAIN || errno == ENOBUFS)
-					goto requeue;
-				ictrl_close(c);
-				return;
-			}
-			TAILQ_REMOVE(&c->channel, pdu, entry);
+		switch (ictrl_send(fd, c)) {
+		case EAGAIN:
+			goto requeue;
+		case -1:
+			return;
+		default:
+			break;
 		}
 	}
 requeue:
@@ -371,4 +354,56 @@ ictrl_queue(void *ch, struct pdu *pdu)
 	event_del(&c->ev);
 	event_set(&c->ev, c->fd, EV_READ|EV_WRITE, c->state->dispatch, c);
 	event_add(&c->ev, NULL);
+}
+
+int
+ictrl_send(int fd, struct ictrl_session *c)
+{
+	struct iovec iov[PDU_MAXIOV];
+	struct msghdr msg;
+	struct pdu *pdu;
+	unsigned int niov = 0;
+
+	if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
+		for (niov = 0; niov < PDU_MAXIOV; niov++) {
+			iov[niov].iov_base = pdu->iov[niov].iov_base;
+			iov[niov].iov_len = pdu->iov[niov].iov_len;
+		}
+		bzero(&msg, sizeof(msg));
+		msg.msg_iov = iov;
+		msg.msg_iovlen = niov;
+		if (sendmsg(fd, &msg, 0) == -1) {
+			if (errno == EAGAIN || errno == ENOBUFS)
+				return EAGAIN;
+			ictrl_close(c);
+			return -1;
+		}
+		TAILQ_REMOVE(&c->channel, pdu, entry);
+	}
+	return 0;
+}
+
+struct pdu *
+ictrl_recv(int fd, struct ictrl_session *c)
+{
+	struct msghdr msg;
+	struct pdu *pdu;
+	ssize_t n;
+
+	if ((n = recv(fd, c->buf, sizeof(c->buf), 0)) == -1 &&
+	    !(errno == EAGAIN || errno == EINTR)) {
+		ictrl_close(c);
+		return NULL;
+	}
+	if (n == 0) {
+		ictrl_close(c);
+		return NULL;
+	}
+	pdu = ictrl_getpdu(c->buf, n);
+	if (!pdu) {
+		log_debug("control connection (fd %d) bad msg.", fd);
+		ictrl_close(c);
+		return NULL;
+	}
+	return pdu;
 }
