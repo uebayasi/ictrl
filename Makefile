@@ -1,5 +1,8 @@
 LIB=	ictrl
-SRCS=	buf.c ictrl.c client.c
+SRCS=	buf.c \
+	ictrl.c \
+	client.c \
+	server.c \
 
 NOMAN=	1
 NOLINT=	1

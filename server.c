@@ -36,7 +36,6 @@
 
 void		server_check(struct server_context *);
 void		server_drop(struct server_context *);
-void		server_loop(struct server_context *);
 void		server_sigdisp(int, short, void *);
 void		server_shutdown_cb(int, short, void *);
 
@@ -124,15 +123,15 @@ server_shutdown_cb(int fd, short event, void *arg)
 	struct server_context *ctx = arg;
 	struct timeval tv;
 
-	if (ctx->exit_rounds++ >= ctx->config->exitwait ||
-	    0/*XXX initiator_isdown(initiator)*/)
+	if (ctx->exit_rounds++ >= ctx->config->exit_wait ||
+	    (*ctx->config->ops->isdown)(ctx))
 		event_loopexit(NULL);
 
 	timerclear(&tv);
 	tv.tv_sec = 1;
 
 	if (evtimer_add(&ctx->exit_ev, &tv) == -1)
-		fatal("shutdown_cb");
+		fatal("%s", __func__);
 }
 
 void
@@ -150,7 +149,7 @@ server_sigdisp(int sig, short event, void *arg)
 		evtimer_set(&ctx->exit_ev, server_shutdown_cb, ctx);
 		timerclear(&tv);
 		if (evtimer_add(&ctx->exit_ev, &tv) == -1)
-			fatal("sigdisp");
+			fatal("%s", __func__);
 		break;
 	default:
 		fatalx("unexpected signal");
