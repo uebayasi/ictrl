@@ -1,6 +1,7 @@
 /*	$OpenBSD: control.c,v 1.9 2016/04/05 00:52:35 yasuoka Exp $ */
 
 /*
+ * Copyright (c) 2016 Masao Uebayashi <uebayasi@tombiinc.com>
  * Copyright (c) 2010 Claudio Jeker <claudio@openbsd.org>
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
  *
@@ -204,16 +205,14 @@ ictrl_dispatch(int fd, short event, void *v)
 	}
 	if (event & EV_WRITE) {
 		switch (ictrl_send(fd, c)) {
-		case EAGAIN:
-			goto requeue;
 		case -1:
 			ictrl_close(c);
 			return;
+		case EAGAIN:
 		default:
 			break;
 		}
 	}
-requeue:
 	ictrl_schedule(c);
 }
 
