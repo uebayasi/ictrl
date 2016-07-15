@@ -5,7 +5,6 @@ struct server_ops;
 struct server_context;
 
 struct server_config {
-	char *sockname;
 	char *username;
 	int exit_wait;
 	int verbose;

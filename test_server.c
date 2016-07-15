@@ -56,7 +56,6 @@ main(int argc, char *argv[])
 		.isdown = test_shutdown_isdown
 	};
 	struct server_config cf = {
-		.sockname = "/var/run/hoge.sock",
 		.username = "_hoge",
 		.exit_wait = 10,
 		.verbose = 0,
@@ -79,7 +78,6 @@ main(int argc, char *argv[])
 			cf.debug = 1;
 			break;
 		case 's':
-			cf.sockname = optarg;
 			ctrl_cf.path = optarg;
 			break;
 		case 'u':
