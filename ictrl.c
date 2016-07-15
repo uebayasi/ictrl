@@ -291,9 +291,9 @@ ictrl_client_fini(struct ictrl_session *c)
 {
 	struct ictrl_state	*ctrl = c->state;
 
+	free(c);
 	close(ctrl->fd);
 	free(ctrl);
-	free(c);
 }
 
 /*
