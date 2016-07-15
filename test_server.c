@@ -22,6 +22,7 @@ void test_start(void *);
 void test_stop(void *);
 void test_shutdown(void *);
 int test_isdown(void *);
+void test_proc(struct ictrl_session *, struct pdu *);
 
 int
 main(int argc, char *argv[])
@@ -46,8 +47,8 @@ main(int argc, char *argv[])
 		.ops = &ops
 	};
 	struct ictrl_config ctrl_cf = {
-		.path = "xxx",
-		.proc = NULL // XXX
+		.path = "/var/run/hoge.sock",
+		.proc = test_proc
 	};
 	struct test_context test = {
 		.ctrl_cf = &ctrl_cf
@@ -138,24 +139,23 @@ test_isdown(void *data)
 
 	// XXX
 
-	return 0;
+	return 1;
 }
 
 void
 test_proc(struct ictrl_session *c, struct pdu *pdu)
 {
 	struct ctrlmsghdr *cmh;
-	//void *d;
 
 	cmh = pdu_getbuf(pdu, NULL, 0);
 	if (cmh == NULL)
 		goto done;
 
 	switch (cmh->type) {
+	case 123:
+		ictrl_compose(c, 456, NULL, 0);
+		break;
 	default:
-		//d = pdu_getbuf(pdu, NULL, 1);
-		//memcpy(&initiator->config, ic, sizeof(initiator->config));
-		ictrl_compose(c, 123, NULL, 0);
 		break;
 	}
 

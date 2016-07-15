@@ -42,9 +42,6 @@ static void	ictrl_accept(int, short, void *);
 static void	ictrl_dispatch(int, short, void *);
 static void	ictrl_close(struct ictrl_session *);
 static void	ictrl_schedule(struct ictrl_session *);
-static int	ictrl_send(int, struct ictrl_session *);
-static struct pdu
-		*ictrl_recv(int, struct ictrl_session *);
 
 struct ictrl_state *
 ictrl_init(struct ictrl_config *cf)
@@ -131,12 +128,12 @@ ictrl_cleanup(struct ictrl_state *ctrl)
 {
 	event_del(&ctrl->ev);
 	event_del(&ctrl->evt);
-	close(ctrl->fd);
-	free(ctrl);
 
 	/* XXX fini */
 	if (ctrl->config->path)
 		unlink(ctrl->config->path);
+	close(ctrl->fd);
+	free(ctrl);
 }
 
 struct ictrl_session *
@@ -173,6 +170,7 @@ ictrl_client_init(struct ictrl_config *cf)
 
 	c->state = ctrl;
 	TAILQ_INIT(&c->channel);
+	c->fd = -1;
 
 	return c;
 }
@@ -321,7 +319,8 @@ ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
 		}
 
 	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
-	ictrl_schedule(c);
+	if (c->fd != -1)
+		ictrl_schedule(c);
 	return 0;
 fail:
 	pdu_free(pdu);
@@ -340,7 +339,7 @@ ictrl_schedule(struct ictrl_session *c)
 	event_add(&c->ev, NULL);
 }
 
-static int
+int
 ictrl_send(int fd, struct ictrl_session *c)
 {
 	struct iovec iov[PDU_MAXIOV];
@@ -366,7 +365,7 @@ ictrl_send(int fd, struct ictrl_session *c)
 	return 0;
 }
 
-static struct pdu *
+struct pdu *
 ictrl_recv(int fd, struct ictrl_session *c)
 {
 	ssize_t n;

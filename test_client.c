@@ -1,3 +1,6 @@
+#include <stdio.h>
+
+#include "buf.h"
 #include "ictrl.h"
 
 struct ictrl_config config = {
@@ -7,13 +10,29 @@ struct ictrl_config config = {
 int
 main(int argc, char *argv[])
 {
-	struct ictrl_session *client;
+	struct ictrl_session *c;
+	char *msg = "hoge";
+	struct pdu *pdu;
+	struct ctrlmsghdr *cmh;
 
-	client = ictrl_client_init(&config);
+	c = ictrl_client_init(&config);
 
-	// ictrl_compose();
+	// {
+	ictrl_compose(c, 123, msg, 5);
+	ictrl_send(c->state->fd, c);
+	pdu = ictrl_recv(c->state->fd, c);
+	cmh = pdu_getbuf(pdu, NULL, 0);
+	switch (cmh->type) {
+	case 456:
+		printf("success!\n");
+		break;
+	default:
+		return 1;
+	}
+	pdu_free(pdu);
+	// }
 
-	ictrl_client_close(client);
+	ictrl_client_close(c);
 
 	return 0;
 }

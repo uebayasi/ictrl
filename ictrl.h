@@ -24,7 +24,7 @@ struct ictrl_session {
 	struct ictrl_state	*state;
 	struct event		ev;
 	struct pduq		channel;
-	int			fd;
+	int			fd;	/* accept fd */
 	char			buf[CONTROL_READ_SIZE];
 };
 
@@ -32,7 +32,7 @@ struct ictrl_state {
 	struct ictrl_config	*config;
 	struct event		ev;
 	struct event		evt;
-	int			fd;
+	int			fd;	/* socket fd */
 };
 
 struct ictrl_state *
@@ -46,6 +46,8 @@ void		ictrl_client_close(struct ictrl_session *);
 
 int		ictrl_compose(void *, u_int16_t, void *, size_t);
 int		ictrl_build(void *, u_int16_t, int, struct ctrldata *);
+int		ictrl_send(int, struct ictrl_session *);
+struct pdu	*ictrl_recv(int, struct ictrl_session *);
 
 /*
  * Common control message header.
