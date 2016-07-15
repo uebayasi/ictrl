@@ -40,7 +40,7 @@
 static void	ictrl_accept(int, short, void *);
 static void	ictrl_dispatch(int, short, void *);
 static void	ictrl_close(struct ictrl_session *);
-static void	ictrl_queue(void *, struct pdu *);
+static void	ictrl_schedule(struct ictrl_session *);
 static int	ictrl_send(int, struct ictrl_session *);
 static struct pdu
 		*ictrl_recv(int, struct ictrl_session *);
@@ -179,8 +179,7 @@ ictrl_accept(int listenfd, short event, void *v)
 	TAILQ_INIT(&c->channel);
 	c->state = ctrl;
 	c->fd = connfd;
-	event_set(&c->ev, c->fd, EV_READ, ictrl_dispatch, c);
-	event_add(&c->ev, NULL);
+	ictrl_schedule(c);
 }
 
 /* ARGSUSED */
@@ -215,12 +214,7 @@ ictrl_dispatch(int fd, short event, void *v)
 		}
 	}
 requeue:
-	if (!TAILQ_EMPTY(&c->channel))
-		flags |= EV_WRITE;
-
-	event_del(&c->ev);
-	event_set(&c->ev, fd, flags, ictrl_dispatch, c);
-	event_add(&c->ev, NULL);
+	ictrl_schedule(c);
 }
 
 static void
@@ -248,6 +242,7 @@ ictrl_compose(void *ch, u_int16_t type, void *buf, size_t len)
 int
 ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
 {
+	struct ictrl_session *c = ch;
 	struct pdu *pdu;
 	struct ctrlmsghdr *cmh;
 	size_t size = 0;
@@ -280,7 +275,8 @@ ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
 			pdu_addbuf(pdu, ptr, argv[i].len, i + 1);
 		}
 
-	ictrl_queue(ch, pdu);
+	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
+	ictrl_schedule(c);
 	return 0;
 fail:
 	pdu_free(pdu);
@@ -288,14 +284,14 @@ fail:
 }
 
 static void
-ictrl_queue(void *ch, struct pdu *pdu)
+ictrl_schedule(struct ictrl_session *c)
 {
-	struct ictrl_session *c = ch;
+	short flags = EV_READ;
 
-	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
-
+	if (!TAILQ_EMPTY(&c->channel))
+		flags |= EV_WRITE;
 	event_del(&c->ev);
-	event_set(&c->ev, c->fd, EV_READ|EV_WRITE, ictrl_dispatch, c);
+	event_set(&c->ev, c->fd, flags, ictrl_dispatch, c);
 	event_add(&c->ev, NULL);
 }
 
