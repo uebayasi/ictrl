@@ -36,8 +36,6 @@
 #include "buf.h"
 #include "ictrl.h"
 
-#define	CONTROL_BACKLOG	5
-
 static void	ictrl_server_accept(int, short, void *);
 static void	ictrl_server_dispatch(int, short, void *);
 static void	ictrl_server_close(struct ictrl_session *);
@@ -97,7 +95,7 @@ ictrl_server_init(struct ictrl_config *cf)
 		return NULL;
 	}
 
-	if (listen(fd, CONTROL_BACKLOG) == -1) {
+	if (listen(fd, cf->backlog) == -1) {
 		log_warn("%s: listen", __func__);
 		close(fd);
 		(void)unlink(cf->path);

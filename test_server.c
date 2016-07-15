@@ -66,6 +66,7 @@ main(int argc, char *argv[])
 	};
 	struct ictrl_config ctrl_cf = {
 		.path = "/var/run/hoge.sock",
+		.backlog = 5,
 		.proc = test_ictrl_proc
 	};
 	struct test_context test = {

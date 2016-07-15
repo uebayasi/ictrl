@@ -16,6 +16,7 @@ struct ictrl_msgbuf;
 
 struct ictrl_config {
 	char			*path;
+	int			backlog;
 	void			(*proc)(struct ictrl_session *,
 				    struct pdu *);
 };
