@@ -17,6 +17,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/param.h> /* nitems */
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
@@ -50,6 +51,7 @@ ictrl_init(struct ictrl_config *cf)
 	struct ictrl_state	*ctrl;
 	struct sockaddr_un	 sun;
 	int			 fd;
+	int			 flags;
 	mode_t			 old_umask;
 
 	if ((ctrl = calloc(1, sizeof(*ctrl))) == NULL) {
@@ -100,7 +102,13 @@ ictrl_init(struct ictrl_config *cf)
 		return NULL;
 	}
 
-	socket_setblockmode(fd, 1);
+	/* set socket non-blocking */
+	if ((flags = fcntl(fd, F_GETFL)) == -1)
+		return NULL;
+	flags |= O_NONBLOCK;
+	if ((flags = fcntl(fd, F_SETFL, flags)) == -1)
+		return NULL;
+
 	ctrl->config = cf;
 	ctrl->fd = fd;
 

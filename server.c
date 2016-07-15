@@ -32,6 +32,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "log.h"
 #include "server.h"
 
 void		server_check(struct server_context *);
