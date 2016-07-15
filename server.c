@@ -32,10 +32,10 @@
 #include "log.h"
 #include "server.h"
 
-void		server_check(struct server_context *);
-void		server_drop(struct server_context *);
-void		server_sigdisp(int, short, void *);
-void		server_shutdown_cb(int, short, void *);
+static void	server_check(struct server_context *);
+static void	server_drop(struct server_context *);
+static void	server_signal(int, short, void *);
+static void	server_shutdown_cb(int, short, void *);
 
 struct server_context *
 server_init(struct server_config *cf, void *data)
@@ -61,7 +61,7 @@ server_fini(struct server_context *ctx)
 	free(ctx);
 }
 
-void
+static void
 server_check(struct server_context *ctx)
 {
 	log_init(ctx->config->debug);
@@ -72,7 +72,7 @@ server_check(struct server_context *ctx)
 		errx(1, "need root privileges");
 }
 
-void
+static void
 server_drop(struct server_context *ctx)
 {
 	struct passwd *pw;
@@ -107,9 +107,9 @@ server_loop(struct server_context *ctx)
 	struct event ev_sigint, ev_sigterm, ev_sighup;
 
 	event_init();
-	signal_set(&ev_sigint, SIGINT, server_sigdisp, ctx);
-	signal_set(&ev_sigterm, SIGTERM, server_sigdisp, ctx);
-	signal_set(&ev_sighup, SIGHUP, server_sigdisp, ctx);
+	signal_set(&ev_sigint, SIGINT, server_signal, ctx);
+	signal_set(&ev_sigterm, SIGTERM, server_signal, ctx);
+	signal_set(&ev_sighup, SIGHUP, server_signal, ctx);
 	signal_add(&ev_sigint, NULL);
 	signal_add(&ev_sigterm, NULL);
 	signal_add(&ev_sighup, NULL);
@@ -122,25 +122,8 @@ server_loop(struct server_context *ctx)
 	log_info("exiting");
 }
 
-void
-server_shutdown_cb(int fd, short event, void *arg)
-{
-	struct server_context *ctx = arg;
-	struct timeval tv;
-
-	if (ctx->exit_rounds++ >= ctx->config->exit_wait ||
-	    (*ctx->config->ops->isdown)(ctx->data))
-		event_loopexit(NULL);
-
-	timerclear(&tv);
-	tv.tv_sec = 1;
-
-	if (evtimer_add(&ctx->exit_ev, &tv) == -1)
-		fatal("%s", __func__);
-}
-
-void
-server_sigdisp(int sig, short event, void *arg)
+static void
+server_signal(int sig, short event, void *arg)
 {
 	struct server_context *ctx = arg;
 	struct timeval tv;
@@ -160,4 +143,21 @@ server_sigdisp(int sig, short event, void *arg)
 		fatalx("unexpected signal");
 		/* NOTREACHED */
 	}
+}
+
+static void
+server_shutdown_cb(int fd, short event, void *arg)
+{
+	struct server_context *ctx = arg;
+	struct timeval tv;
+
+	if (ctx->exit_rounds++ >= ctx->config->exit_wait ||
+	    (*ctx->config->ops->isdown)(ctx->data))
+		event_loopexit(NULL);
+
+	timerclear(&tv);
+	tv.tv_sec = 1;
+
+	if (evtimer_add(&ctx->exit_ev, &tv) == -1)
+		fatal("%s", __func__);
 }
