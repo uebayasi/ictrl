@@ -139,6 +139,54 @@ ictrl_cleanup(struct ictrl_state *ctrl)
 		unlink(ctrl->config->path);
 }
 
+struct ictrl_session *
+ictrl_client_init(struct ictrl_config *cf)
+{
+	struct ictrl_state	*ctrl;
+	struct sockaddr_un	 sun;
+	int			 fd;
+	struct ictrl_session	*c;
+
+	if ((ctrl = calloc(1, sizeof(*ctrl))) == NULL) {
+		log_warn("ictrl_client_init: calloc");
+		return NULL;
+	}
+
+	if ((fd = socket(AF_UNIX, SOCK_SEQPACKET, 0)) == -1)
+		err(1, "socket");
+
+	bzero(&sun, sizeof(sun));
+	sun.sun_family = AF_UNIX;
+	strlcpy(sun.sun_path, cf->path, sizeof(sun.sun_path));
+
+	if (connect(fd, (struct sockaddr *)&sun, sizeof(sun)) == -1)
+		err(1, "connect: %s", cf->path);
+
+	ctrl->config = cf;
+	ctrl->fd = fd;
+
+	if ((c = malloc(sizeof(struct ictrl_session))) == NULL) {
+		close(ctrl->fd);
+		free(ctrl);
+		return NULL;
+	}
+
+	c->state = ctrl;
+	TAILQ_INIT(&c->channel);
+
+	return c;
+}
+
+void
+ictrl_client_close(struct ictrl_session *c)
+{
+	struct ictrl_state	*ctrl = c->state;
+
+	close(ctrl->fd);
+	free(ctrl);
+	free(c);
+}
+
 static void
 ictrl_accept(int listenfd, short event, void *v)
 {

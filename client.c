@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <util.h>
 
+#if 0
 #include "ictrl.h"
 #include "buf.h"
 #include "client.h"
@@ -108,3 +109,4 @@ ctl_recvpdu(int fd, char *buf, size_t buflen)
 
 	return pdu_get(buf, n);
 }
+#endif
