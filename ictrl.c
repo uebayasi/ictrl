@@ -62,7 +62,7 @@ void	ictrl_queue(void *, struct pdu *);
 void	ictrl_dispatch(int, short, void *);
 
 struct ictrl_state *
-ictrl_init(char *path)
+ictrl_init(char *path, void (*procpdu)(struct ictrl_session *, struct pdu *))
 {
 	struct ictrl_state	*ctrl;
 	struct sockaddr_un	 sun;
@@ -119,6 +119,7 @@ ictrl_init(char *path)
 
 	socket_setblockmode(fd, 1);
 	ctrl->fd = fd;
+	ctrl->procpdu = procpdu;
 
 	return ctrl;
 }
@@ -138,7 +139,7 @@ ictrl_cleanup(struct ictrl_state *ctrl, char *path)
 void
 ictrl_event_init(struct ictrl_state *ctrl)
 {
-	event_set(&ctrl->ev, ctrl->fd, EV_READ, ictrl_accept, NULL);
+	event_set(&ctrl->ev, ctrl->fd, EV_READ, ictrl_accept, ctrl);
 	event_add(&ctrl->ev, NULL);
 	evtimer_set(&ctrl->evt, ictrl_accept, ctrl);
 }
