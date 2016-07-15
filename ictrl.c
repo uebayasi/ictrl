@@ -39,7 +39,7 @@
 static void	ictrl_server_accept(int, short, void *);
 static void	ictrl_server_dispatch(int, short, void *);
 static void	ictrl_server_close(struct ictrl_session *);
-static void	ictrl_server_schedule(struct ictrl_session *);
+static void	ictrl_server_trigger(struct ictrl_session *);
 
 /*
  * API for server
@@ -179,15 +179,13 @@ ictrl_server_accept(int listenfd, short event, void *v)
 	TAILQ_INIT(&c->channel);
 	c->state = ctrl;
 	c->fd = connfd;
-	ictrl_server_schedule(c);
+	ictrl_server_trigger(c);
 }
 
 static void
 ictrl_server_dispatch(int fd, short event, void *v)
 {
 	struct ictrl_session *c = v;
-	struct pdu *pdu;
-	short flags = EV_READ;
 
 	if (event & EV_TIMEOUT) {
 		log_debug("%s: control connection (fd %d) timed out.",
@@ -196,6 +194,8 @@ ictrl_server_dispatch(int fd, short event, void *v)
 		return;
 	}
 	if (event & EV_READ) {
+		struct pdu *pdu;
+
 		if ((pdu = ictrl_recv(c)) == NULL) {
 			ictrl_server_close(c);
 			return;
@@ -212,7 +212,7 @@ ictrl_server_dispatch(int fd, short event, void *v)
 			break;
 		}
 	}
-	ictrl_server_schedule(c);
+	ictrl_server_trigger(c);
 }
 
 static void
@@ -232,7 +232,7 @@ ictrl_server_close(struct ictrl_session *c)
 }
 
 static void
-ictrl_server_schedule(struct ictrl_session *c)
+ictrl_server_trigger(struct ictrl_session *c)
 {
 	short flags = EV_READ;
 
@@ -350,7 +350,7 @@ ictrl_build(struct ictrl_session *c, u_int16_t type, int argc,
 	 * Schedule a next event for server.
 	 */
 	if (c->fd != -1)
-		ictrl_server_schedule(c);
+		ictrl_server_trigger(c);
 
 	return 0;
 fail:
