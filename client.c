@@ -39,8 +39,6 @@ struct control {
 	int		fd;
 } control;
 
-struct pdu *ctl_getpdu(char *, size_t);
-
 void
 ictrl_connect(char *sockname)
 {
@@ -90,7 +88,7 @@ ctl_sendpdu(int fd, struct pdu *pdu)
 	return 0;
 }
 
-struct pdu *pdu;
+struct pdu *
 ctl_recvpdu(int fd, char *buf, size_t buflen)
 {
 	struct ctrlmsghdr *cmh;
@@ -103,53 +101,5 @@ ctl_recvpdu(int fd, char *buf, size_t buflen)
 	if (n == 0)
 		errx(1, "connection to iscsid closed");
 
-	return ctl_getpdu(buf, n);
-}
-
-struct pdu *
-ctl_getpdu(char *buf, size_t len)
-{
-	struct pdu *p;
-	struct ctrlmsghdr *cmh;
-	void *data;
-	size_t n;
-	int i;
-
-	if (len < sizeof(*cmh))
-		return NULL;
-
-	if (!(p = pdu_new()))
-		return NULL;
-
-	n = sizeof(*cmh);
-	cmh = pdu_alloc(n);
-	bcopy(buf, cmh, n);
-	buf += n;
-	len -= n;
-
-	if (pdu_addbuf(p, cmh, n, 0)) {
-		free(cmh);
-fail:
-		pdu_free(p);
-		return NULL;
-	}
-
-	for (i = 0; i < 3; i++) {
-		n = cmh->len[i];
-		if (n == 0)
-			continue;
-		if (PDU_LEN(n) > len)
-			goto fail;
-		if (!(data = pdu_alloc(n)))
-			goto fail;
-		bcopy(buf, data, n);
-		if (pdu_addbuf(p, data, n, i + 1)) {
-			free(data);
-			goto fail;
-		}
-		buf += PDU_LEN(n);
-		len -= PDU_LEN(n);
-	}
-
-	return p;
+	return pdu_get(buf, n);
 }

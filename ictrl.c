@@ -252,7 +252,6 @@ fail:
 	return -1;
 }
 
-struct pdu *ictrl_getpdu(char *, size_t);
 int ictrl_send(int, struct ictrl_session *);
 struct pdu *ictrl_recv(int, struct ictrl_session *);
 
@@ -294,54 +293,6 @@ requeue:
 	event_del(&c->ev);
 	event_set(&c->ev, fd, flags, ictrl_dispatch, c);
 	event_add(&c->ev, NULL);
-}
-
-struct pdu *
-ictrl_getpdu(char *buf, size_t len)
-{
-	struct pdu *p;
-	struct ctrlmsghdr *cmh;
-	void *data;
-	size_t n;
-	int i;
-
-	if (len < sizeof(*cmh))
-		return NULL;
-
-	if (!(p = pdu_new()))
-		return NULL;
-
-	n = sizeof(*cmh);
-	cmh = pdu_alloc(n);
-	memcpy(cmh, buf, n);
-	buf += n;
-	len -= n;
-
-	if (pdu_addbuf(p, cmh, n, 0)) {
-		free(cmh);
-fail:
-		pdu_free(p);
-		return NULL;
-	}
-
-	for (i = 0; i < 3; i++) {
-		n = cmh->len[i];
-		if (n == 0)
-			continue;
-		if (PDU_LEN(n) > len)
-			goto fail;
-		if (!(data = pdu_alloc(n)))
-			goto fail;
-		memcpy(data, buf, n);
-		if (pdu_addbuf(p, data, n, i + 1)) {
-			free(data);
-			goto fail;
-		}
-		buf += PDU_LEN(n);
-		len -= PDU_LEN(n);
-	}
-
-	return p;
 }
 
 void
@@ -399,7 +350,7 @@ ictrl_recv(int fd, struct ictrl_session *c)
 		ictrl_close(c);
 		return NULL;
 	}
-	pdu = ictrl_getpdu(c->buf, n);
+	pdu = pdu_get(c->buf, n);
 	if (!pdu) {
 		log_debug("control connection (fd %d) bad msg.", fd);
 		ictrl_close(c);
