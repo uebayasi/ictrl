@@ -58,6 +58,13 @@ server_init(struct server_config *cf, void *data)
 }
 
 void
+server_fini(struct server_context *ctx)
+{
+	(*ctx->config->ops->fini)(ctx->data);
+	free(ctx);
+}
+
+void
 server_check(struct server_context *ctx)
 {
 	log_init(ctx->config->debug);

@@ -113,27 +113,28 @@ ictrl_init(struct ictrl_config *cf)
 	return ctrl;
 }
 
-// XXX before event_dispatch()
 void
-ictrl_event_init(struct ictrl_state *ctrl)
+ictrl_fini(struct ictrl_state *ctrl)
+{
+	if (ctrl->config->path)
+		unlink(ctrl->config->path);
+	close(ctrl->fd);
+	free(ctrl);
+}
+
+void
+ictrl_start(struct ictrl_state *ctrl)
 {
 	event_set(&ctrl->ev, ctrl->fd, EV_READ, ictrl_accept, ctrl);
 	event_add(&ctrl->ev, NULL);
 	evtimer_set(&ctrl->evt, ictrl_accept, ctrl);
 }
 
-// XXX after event_dispatch()
 void
-ictrl_cleanup(struct ictrl_state *ctrl)
+ictrl_stop(struct ictrl_state *ctrl)
 {
 	event_del(&ctrl->ev);
 	event_del(&ctrl->evt);
-
-	/* XXX fini */
-	if (ctrl->config->path)
-		unlink(ctrl->config->path);
-	close(ctrl->fd);
-	free(ctrl);
 }
 
 struct ictrl_session *
@@ -319,8 +320,13 @@ ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
 		}
 
 	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
+
+	/*
+	 * Schedule a next event for server.
+	 */
 	if (c->fd != -1)
 		ictrl_schedule(c);
+
 	return 0;
 fail:
 	pdu_free(pdu);

@@ -37,8 +37,9 @@ struct ictrl_state {
 
 struct ictrl_state *
 		ictrl_init(struct ictrl_config *);
-void		ictrl_event_init(struct ictrl_state *);
-void		ictrl_cleanup(struct ictrl_state *);
+void		ictrl_fini(struct ictrl_state *);
+void		ictrl_start(struct ictrl_state *);
+void		ictrl_stop(struct ictrl_state *);
 
 struct ictrl_session *
 		ictrl_client_init(struct ictrl_config *);

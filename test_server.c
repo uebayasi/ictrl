@@ -18,6 +18,7 @@ struct test_context {
 __dead void	usage(void);
 
 void test_init(void *);
+void test_fini(void *);
 void test_start(void *);
 void test_stop(void *);
 void test_shutdown(void *);
@@ -32,6 +33,7 @@ main(int argc, char *argv[])
 	struct server_context *ctx;
 	struct server_ops ops = {
 		.init = test_init,
+		.fini = test_fini,
 		.start = test_start,
 		.stop = test_stop,
 		.shutdown = test_shutdown,
@@ -87,6 +89,8 @@ main(int argc, char *argv[])
 
 	server_loop(ctx);
 
+	server_fini(ctx);
+
 	return 0;
 }
 
@@ -109,11 +113,19 @@ test_init(void *data)
 }
 
 void
+test_fini(void *data)
+{
+	struct test_context *test = data;
+
+	ictrl_fini(test->ctrl);
+}
+
+void
 test_start(void *data)
 {
 	struct test_context *test = data;
 
-	ictrl_event_init(test->ctrl);
+	ictrl_start(test->ctrl);
 }
 
 void
@@ -121,7 +133,7 @@ test_stop(void *data)
 {
 	struct test_context *test = data;
 
-	ictrl_cleanup(test->ctrl);
+	ictrl_stop(test->ctrl);
 }
 
 void
