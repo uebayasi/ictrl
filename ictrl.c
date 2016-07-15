@@ -116,10 +116,10 @@ ictrl_init(struct ictrl_config *cf)
 }
 
 void
-ictrl_cleanup(struct ictrl_state *ctrl, char *path)
+ictrl_cleanup(struct ictrl_state *ctrl)
 {
-	if (path)
-		unlink(path);
+	if (ctrl->config->path)
+		unlink(ctrl->config->path);
 
 	event_del(&ctrl->ev);
 	event_del(&ctrl->evt);
