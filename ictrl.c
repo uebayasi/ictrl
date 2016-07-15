@@ -38,8 +38,8 @@
 #define	CONTROL_BACKLOG	5
 
 static void	ictrl_accept(int, short, void *);
-static void	ictrl_close(struct ictrl_session *);
 static void	ictrl_dispatch(int, short, void *);
+static void	ictrl_close(struct ictrl_session *);
 static void	ictrl_queue(void *, struct pdu *);
 static int	ictrl_send(int, struct ictrl_session *);
 static struct pdu
@@ -115,24 +115,27 @@ ictrl_init(struct ictrl_config *cf)
 	return ctrl;
 }
 
-void
-ictrl_cleanup(struct ictrl_state *ctrl)
-{
-	if (ctrl->config->path)
-		unlink(ctrl->config->path);
-
-	event_del(&ctrl->ev);
-	event_del(&ctrl->evt);
-	close(ctrl->fd);
-	free(ctrl);
-}
-
+// XXX before event_dispatch()
 void
 ictrl_event_init(struct ictrl_state *ctrl)
 {
 	event_set(&ctrl->ev, ctrl->fd, EV_READ, ictrl_accept, ctrl);
 	event_add(&ctrl->ev, NULL);
 	evtimer_set(&ctrl->evt, ictrl_accept, ctrl);
+}
+
+// XXX after event_dispatch()
+void
+ictrl_cleanup(struct ictrl_state *ctrl)
+{
+	event_del(&ctrl->ev);
+	event_del(&ctrl->evt);
+	close(ctrl->fd);
+	free(ctrl);
+
+	/* XXX fini */
+	if (ctrl->config->path)
+		unlink(ctrl->config->path);
 }
 
 /* ARGSUSED */
@@ -177,6 +180,46 @@ ictrl_accept(int listenfd, short event, void *v)
 	c->state = ctrl;
 	c->fd = connfd;
 	event_set(&c->ev, c->fd, EV_READ, ictrl_dispatch, c);
+	event_add(&c->ev, NULL);
+}
+
+/* ARGSUSED */
+static void
+ictrl_dispatch(int fd, short event, void *v)
+{
+	struct ictrl_session *c = v;
+	struct pdu *pdu;
+	short flags = EV_READ;
+
+	if (event & EV_TIMEOUT) {
+		log_debug("control connection (fd %d) timed out.", fd);
+		ictrl_close(c);
+		return;
+	}
+	if (event & EV_READ) {
+		if ((pdu = ictrl_recv(fd, c)) == NULL) {
+			ictrl_close(c);
+			return;
+		}
+		(*c->state->config->proc)(c, pdu);
+	}
+	if (event & EV_WRITE) {
+		switch (ictrl_send(fd, c)) {
+		case EAGAIN:
+			goto requeue;
+		case -1:
+			ictrl_close(c);
+			return;
+		default:
+			break;
+		}
+	}
+requeue:
+	if (!TAILQ_EMPTY(&c->channel))
+		flags |= EV_WRITE;
+
+	event_del(&c->ev);
+	event_set(&c->ev, fd, flags, ictrl_dispatch, c);
 	event_add(&c->ev, NULL);
 }
 
@@ -245,49 +288,6 @@ fail:
 }
 
 static void
-ictrl_dispatch(int fd, short event, void *v)
-{
-	struct iovec iov[PDU_MAXIOV];
-	struct msghdr msg;
-	struct ictrl_session *c = v;
-	struct pdu *pdu;
-	ssize_t n;
-	unsigned int niov = 0;
-	short flags = EV_READ;
-
-	if (event & EV_TIMEOUT) {
-		log_debug("control connection (fd %d) timed out.", fd);
-		ictrl_close(c);
-		return;
-	}
-	if (event & EV_READ) {
-		if ((pdu = ictrl_recv(fd, c)) == NULL) {
-			ictrl_close(c);
-			return;
-		}
-		(*c->state->config->proc)(c, pdu);
-	}
-	if (event & EV_WRITE) {
-		switch (ictrl_send(fd, c)) {
-		case EAGAIN:
-			goto requeue;
-		case -1:
-			ictrl_close(c);
-			return;
-		default:
-			break;
-		}
-	}
-requeue:
-	if (!TAILQ_EMPTY(&c->channel))
-		flags |= EV_WRITE;
-
-	event_del(&c->ev);
-	event_set(&c->ev, fd, flags, ictrl_dispatch, c);
-	event_add(&c->ev, NULL);
-}
-
-static void
 ictrl_queue(void *ch, struct pdu *pdu)
 {
 	struct ictrl_session *c = ch;
@@ -328,8 +328,6 @@ ictrl_send(int fd, struct ictrl_session *c)
 static struct pdu *
 ictrl_recv(int fd, struct ictrl_session *c)
 {
-	struct msghdr msg;
-	struct pdu *pdu;
 	ssize_t n;
 
 	if ((n = recv(fd, c->buf, sizeof(c->buf), 0)) == -1 &&
