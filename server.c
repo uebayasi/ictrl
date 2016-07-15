@@ -51,7 +51,7 @@ server_init(struct server_config *cf, void *data)
 	ctx->data = data;
 
 	server_check(ctx);
-	(*ctx->config->ops->init)(ctx->data);
+	(*ctx->config->ops->init)(ctx);
 	server_drop(ctx);
 
 	return ctx;
@@ -111,9 +111,9 @@ server_loop(struct server_context *ctx)
 	signal_add(&ev_sighup, NULL);
 	signal(SIGPIPE, SIG_IGN);
 
-	(*ctx->config->ops->start)(ctx->data);
+	(*ctx->config->ops->start)(ctx);
 	event_dispatch();
-	(*ctx->config->ops->stop)(ctx->data);
+	(*ctx->config->ops->stop)(ctx);
 
 	log_info("exiting");
 }
@@ -146,7 +146,7 @@ server_sigdisp(int sig, short event, void *arg)
 	case SIGINT:
 	case SIGTERM:
 	case SIGHUP:
-		(*ctx->config->ops->shutdown)(ctx->data);
+		(*ctx->config->ops->shutdown)(ctx);
 		evtimer_set(&ctx->exit_ev, server_shutdown_cb, ctx);
 		timerclear(&tv);
 		if (evtimer_add(&ctx->exit_ev, &tv) == -1)

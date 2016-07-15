@@ -11,6 +11,8 @@
 #include "server.h"
 
 struct test_context {
+	struct ictrl_config *ctrl_cf;
+	struct ictrl_state *ctrl;
 };
 
 __dead void	usage(void);
@@ -36,7 +38,7 @@ main(int argc, char *argv[])
 	};
 	struct server_config cf = {
 		.sockname = "/var/run/hoge.sock",
-		.username = "hoge",
+		.username = "_hoge",
 		.exit_wait = 10,
 		.verbose = 0,
 		.debug = 0,
@@ -44,8 +46,12 @@ main(int argc, char *argv[])
 		.ops = &ops
 	};
 	struct ictrl_config ctrl_cf = {
+		.path = "xxx",
+		.proc = NULL // XXX
 	};
-	struct ictrl_state *ctrl;
+	struct test_context test = {
+		.ctrl_cf = &ctrl_cf
+	};
 
 	while ((ch = getopt(argc, argv, "ds:u:vw:")) != -1) {
 		switch (ch) {
@@ -76,7 +82,7 @@ main(int argc, char *argv[])
 	if (argc > 0)
 		usage();
 
-	ctx = server_init(&cf, NULL);
+	ctx = server_init(&cf, &test);
 
 	server_loop(ctx);
 
@@ -96,31 +102,42 @@ usage(void)
 void
 test_init(struct server_context *ctx)
 {
-	// struct ictrl_state *ctrl;
+	struct test_context *test = ctx->data;
 
-	// ictrl_init();
+	test->ctrl = ictrl_init(test->ctrl_cf);
 }
 
 void
 test_start(struct server_context *ctx)
 {
-	// ictrl_event_init();
+	struct test_context *test = ctx->data;
+
+	ictrl_event_init(test->ctrl);
 }
 
 void
 test_stop(struct server_context *ctx)
 {
-	// ictrl_cleanup();
+	struct test_context *test = ctx->data;
+
+	ictrl_cleanup(test->ctrl);
 }
 
 void
 test_shutdown(struct server_context *ctx)
 {
+	struct test_context *test = ctx->data;
+
+	// XXX
 }
 
 int
 test_isdown(struct server_context *ctx)
 {
+	struct test_context *test = ctx->data;
+
+	// XXX
+
 	return 0;
 }
 

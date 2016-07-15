@@ -139,7 +139,6 @@ ictrl_cleanup(struct ictrl_state *ctrl)
 		unlink(ctrl->config->path);
 }
 
-/* ARGSUSED */
 static void
 ictrl_accept(int listenfd, short event, void *v)
 {
@@ -183,7 +182,6 @@ ictrl_accept(int listenfd, short event, void *v)
 	ictrl_schedule(c);
 }
 
-/* ARGSUSED */
 static void
 ictrl_dispatch(int fd, short event, void *v)
 {
