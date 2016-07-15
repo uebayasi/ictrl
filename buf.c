@@ -118,7 +118,7 @@ struct pdu *
 pdu_get(char *buf, size_t len)
 {
 	struct pdu *p;
-	struct ctrlmsghdr *cmh;
+	struct ictrl_msghdr *cmh;
 	void *data;
 	size_t n;
 	int i;

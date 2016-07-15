@@ -301,6 +301,8 @@ ictrl_client_fini(struct ictrl_session *c)
  * API for both server and client
  */
 
+#define CTRLARGV(x...)	((struct ictrl_msgbuf []){ x })
+
 int
 ictrl_compose(void *ch, u_int16_t type, void *buf, size_t len)
 {
@@ -308,11 +310,11 @@ ictrl_compose(void *ch, u_int16_t type, void *buf, size_t len)
 }
 
 int
-ictrl_build(void *ch, u_int16_t type, int argc, struct ctrldata *argv)
+ictrl_build(void *ch, u_int16_t type, int argc, struct ictrl_msgbuf *argv)
 {
 	struct ictrl_session *c = ch;
 	struct pdu *pdu;
-	struct ctrlmsghdr *cmh;
+	struct ictrl_msghdr *cmh;
 	size_t size = 0;
 	int i;
 

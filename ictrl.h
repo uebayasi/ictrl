@@ -11,8 +11,8 @@ struct ictrl_config;
 struct ictrl_session;
 struct ictrl_state;
 struct pdu;
-struct ctrlmsghdr;
-struct ctrldata;
+struct ictrl_msghdr;
+struct ictrl_msgbuf;
 
 struct ictrl_config {
 	char			*path;
@@ -46,7 +46,7 @@ struct ictrl_session *
 void		ictrl_client_fini(struct ictrl_session *);
 
 int		ictrl_compose(void *, u_int16_t, void *, size_t);
-int		ictrl_build(void *, u_int16_t, int, struct ctrldata *);
+int		ictrl_build(void *, u_int16_t, int, struct ictrl_msgbuf *);
 int		ictrl_send(struct ictrl_session *);
 struct pdu	*ictrl_recv(struct ictrl_session *);
 
@@ -54,16 +54,14 @@ struct pdu	*ictrl_recv(struct ictrl_session *);
  * Common control message header.
  * A message can consist of up to 3 parts with specified length.
  */
-struct ctrlmsghdr {
+struct ictrl_msghdr {
 	u_int16_t	type;
 	u_int16_t	len[3];
 };
 
-struct ctrldata {
+struct ictrl_msgbuf {
 	void		*buf;
 	size_t		 len;
 };
-
-#define CTRLARGV(x...)	((struct ctrldata []){ x })
 
 #endif /* _ICTRL_ICTRL_H_ */

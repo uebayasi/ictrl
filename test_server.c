@@ -157,7 +157,7 @@ test_isdown(void *data)
 void
 test_proc(struct ictrl_session *c, struct pdu *pdu)
 {
-	struct ctrlmsghdr *cmh;
+	struct ictrl_msghdr *cmh;
 
 	cmh = pdu_getbuf(pdu, NULL, 0);
 	if (cmh == NULL)

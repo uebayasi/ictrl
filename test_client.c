@@ -13,7 +13,7 @@ main(int argc, char *argv[])
 	struct ictrl_session *c;
 	char *msg = "hoge";
 	struct pdu *pdu;
-	struct ctrlmsghdr *cmh;
+	struct ictrl_msghdr *cmh;
 
 	c = ictrl_client_init(&config);
 
