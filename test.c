@@ -10,6 +10,9 @@
 #include "ictrl.h"
 #include "server.h"
 
+struct test_context {
+};
+
 __dead void	usage(void);
 
 void test_init(struct server_context *);
@@ -40,6 +43,9 @@ main(int argc, char *argv[])
 		.nobkill = 0,
 		.ops = &ops
 	};
+	struct ictrl_config ctrl_cf = {
+	};
+	struct ictrl_state *ctrl;
 
 	while ((ch = getopt(argc, argv, "ds:u:vw:")) != -1) {
 		switch (ch) {
@@ -121,4 +127,21 @@ test_isdown(struct server_context *ctx)
 void
 test_proc(struct ictrl_session *c, struct pdu *pdu)
 {
+	struct ctrlmsghdr *cmh;
+	//void *d;
+
+	cmh = pdu_getbuf(pdu, NULL, 0);
+	if (cmh == NULL)
+		goto done;
+
+	switch (cmh->type) {
+	default:
+		//d = pdu_getbuf(pdu, NULL, 1);
+		//memcpy(&initiator->config, ic, sizeof(initiator->config));
+		ictrl_compose(c, 123, NULL, 0);
+		break;
+	}
+
+done:
+	pdu_free(pdu);
 }

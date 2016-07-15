@@ -1,17 +1,23 @@
+#ifndef _ICTRL_ICTRL_H_
+#define _ICTRL_ICTRL_H_
+
 #include <sys/queue.h>
 
 #include <event.h>
 
-//#include "buf.h"
+#include "buf.h"
 
 struct ictrl_config;
 struct ictrl_session;
 struct ictrl_state;
 struct pdu;
+struct ctrlmsghdr;
+struct ctrldata;
 
 struct ictrl_config {
-	char *path;
-	void (*proc)(struct ictrl_session *, struct pdu *);
+	char			*path;
+	void			(*proc)(struct ictrl_session *,
+				    struct pdu *);
 };
 
 struct ictrl_session {
@@ -23,18 +29,18 @@ struct ictrl_session {
 };
 
 struct ictrl_state {
+	struct ictrl_config	*config;
 	struct event		ev;
 	struct event		evt;
 	int			fd;
-	void			(*procpdu)(struct ictrl_session *,
-				    struct pdu *);
 };
 
 struct ictrl_state *
-		ictrl_init(char *,
-		    void (*)(struct ictrl_session *, struct pdu *));
+		ictrl_init(struct ictrl_config *);
 void		ictrl_cleanup(struct ictrl_state *, char *);
 void		ictrl_event_init(struct ictrl_state *);
+int		ictrl_compose(void *, u_int16_t, void *, size_t);
+int		ictrl_build(void *, u_int16_t, int, struct ctrldata *);
 
 /*
  * Common control message header.
@@ -51,3 +57,5 @@ struct ctrldata {
 };
 
 #define CTRLARGV(x...)	((struct ctrldata []){ x })
+
+#endif /* _ICTRL_ICTRL_H_ */

@@ -34,23 +34,18 @@
 #include "buf.h"
 #include "ictrl.h"
 
-
 #define	CONTROL_BACKLOG	5
 
 static void	ictrl_accept(int, short, void *);
 static void	ictrl_close(struct ictrl_session *);
-
-int	ictrl_compose(void *, u_int16_t, void *, size_t);
-int	ictrl_build(void *, u_int16_t, int, struct ctrldata *);
-static void	ictrl_queue(void *, struct pdu *);
-
 static void	ictrl_dispatch(int, short, void *);
+static void	ictrl_queue(void *, struct pdu *);
 static int	ictrl_send(int, struct ictrl_session *);
 static struct pdu
 		*ictrl_recv(int, struct ictrl_session *);
 
 struct ictrl_state *
-ictrl_init(char *path, void (*procpdu)(struct ictrl_session *, struct pdu *))
+ictrl_init(struct ictrl_config *cf)
 {
 	struct ictrl_state	*ctrl;
 	struct sockaddr_un	 sun;
@@ -69,45 +64,45 @@ ictrl_init(char *path, void (*procpdu)(struct ictrl_session *, struct pdu *))
 
 	bzero(&sun, sizeof(sun));
 	sun.sun_family = AF_UNIX;
-	if (strlcpy(sun.sun_path, path, sizeof(sun.sun_path)) >=
+	if (strlcpy(sun.sun_path, cf->path, sizeof(sun.sun_path)) >=
 	    sizeof(sun.sun_path)) {
-		log_warnx("ictrl_init: path %s too long", path);
+		log_warnx("ictrl_init: path %s too long", cf->path);
 		return NULL;
 	}
 
-	if (unlink(path) == -1)
+	if (unlink(cf->path) == -1)
 		if (errno != ENOENT) {
-			log_warn("ictrl_init: unlink %s", path);
+			log_warn("ictrl_init: unlink %s", cf->path);
 			close(fd);
 			return NULL;
 		}
 
 	old_umask = umask(S_IXUSR|S_IXGRP|S_IWOTH|S_IROTH|S_IXOTH);
 	if (bind(fd, (struct sockaddr *)&sun, sizeof(sun)) == -1) {
-		log_warn("ictrl_init: bind: %s", path);
+		log_warn("ictrl_init: bind: %s", cf->path);
 		close(fd);
 		umask(old_umask);
 		return NULL;
 	}
 	umask(old_umask);
 
-	if (chmod(path, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) == -1) {
+	if (chmod(cf->path, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) == -1) {
 		log_warn("ictrl_init: chmod");
 		close(fd);
-		(void)unlink(path);
+		(void)unlink(cf->path);
 		return NULL;
 	}
 
 	if (listen(fd, CONTROL_BACKLOG) == -1) {
 		log_warn("ictrl_init: listen");
 		close(fd);
-		(void)unlink(path);
+		(void)unlink(cf->path);
 		return NULL;
 	}
 
 	socket_setblockmode(fd, 1);
+	ctrl->config = cf;
 	ctrl->fd = fd;
-	ctrl->procpdu = procpdu;
 
 	return ctrl;
 }
@@ -173,7 +168,7 @@ ictrl_accept(int listenfd, short event, void *v)
 	TAILQ_INIT(&c->channel);
 	c->state = ctrl;
 	c->fd = connfd;
-	event_set(&c->ev, connfd, EV_READ, ictrl_dispatch, c);
+	event_set(&c->ev, c->fd, EV_READ, ictrl_dispatch, c);
 	event_add(&c->ev, NULL);
 }
 
@@ -262,7 +257,7 @@ ictrl_dispatch(int fd, short event, void *v)
 			ictrl_close(c);
 			return;
 		}
-		(*c->state->procpdu)(c, pdu);
+		(*c->state->config->proc)(c, pdu);
 	}
 	if (event & EV_WRITE) {
 		switch (ictrl_send(fd, c)) {

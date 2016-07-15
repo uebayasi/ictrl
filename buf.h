@@ -16,6 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifndef _ICTRL_BUF_H_
+#define _ICTRL_BUF_H_
+
 #include <sys/queue.h>
 #include <sys/uio.h>
 
@@ -41,3 +44,5 @@ void	*pdu_getbuf(struct pdu *, size_t *, unsigned int);
 void	pdu_free(struct pdu *);
 void	pdu_free_queue(struct pduq *);
 struct pdu *pdu_get(char *, size_t);
+
+#endif /* _ICTRL_BUF_H_ */
