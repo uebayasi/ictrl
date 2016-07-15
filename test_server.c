@@ -80,6 +80,7 @@ main(int argc, char *argv[])
 			break;
 		case 's':
 			cf.sockname = optarg;
+			ctrl_cf.path = optarg;
 			break;
 		case 'u':
 			cf.username = optarg;
