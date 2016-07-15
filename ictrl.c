@@ -34,32 +34,20 @@
 #include "buf.h"
 #include "ictrl.h"
 
-struct ictrl_session {
-	struct ictrl_state	*state;
-	struct event		ev;
-	struct pduq		channel;
-	int			fd;
-	char			buf[CONTROL_READ_SIZE];
-};
-
-struct ictrl_state {
-	struct event		ev;
-	struct event		evt;
-	int			fd;
-	void			(*procpdu)(struct ictrl_session *,
-				    struct pdu *);
-};
 
 #define	CONTROL_BACKLOG	5
 
-void	ictrl_accept(int, short, void *);
-void	ictrl_close(struct ictrl_session *);
+static void	ictrl_accept(int, short, void *);
+static void	ictrl_close(struct ictrl_session *);
 
 int	ictrl_compose(void *, u_int16_t, void *, size_t);
 int	ictrl_build(void *, u_int16_t, int, struct ctrldata *);
-void	ictrl_queue(void *, struct pdu *);
+static void	ictrl_queue(void *, struct pdu *);
 
-void	ictrl_dispatch(int, short, void *);
+static void	ictrl_dispatch(int, short, void *);
+static int	ictrl_send(int, struct ictrl_session *);
+static struct pdu
+		*ictrl_recv(int, struct ictrl_session *);
 
 struct ictrl_state *
 ictrl_init(char *path, void (*procpdu)(struct ictrl_session *, struct pdu *))
@@ -145,7 +133,7 @@ ictrl_event_init(struct ictrl_state *ctrl)
 }
 
 /* ARGSUSED */
-void
+static void
 ictrl_accept(int listenfd, short event, void *v)
 {
 	struct ictrl_state	*ctrl = v;
@@ -189,7 +177,7 @@ ictrl_accept(int listenfd, short event, void *v)
 	event_add(&c->ev, NULL);
 }
 
-void
+static void
 ictrl_close(struct ictrl_session *c)
 {
 	event_del(&c->ev);
@@ -253,10 +241,7 @@ fail:
 	return -1;
 }
 
-int ictrl_send(int, struct ictrl_session *);
-struct pdu *ictrl_recv(int, struct ictrl_session *);
-
-void
+static void
 ictrl_dispatch(int fd, short event, void *v)
 {
 	struct iovec iov[PDU_MAXIOV];
@@ -299,7 +284,7 @@ requeue:
 	event_add(&c->ev, NULL);
 }
 
-void
+static void
 ictrl_queue(void *ch, struct pdu *pdu)
 {
 	struct ictrl_session *c = ch;
@@ -311,7 +296,7 @@ ictrl_queue(void *ch, struct pdu *pdu)
 	event_add(&c->ev, NULL);
 }
 
-int
+static int
 ictrl_send(int fd, struct ictrl_session *c)
 {
 	struct iovec iov[PDU_MAXIOV];
@@ -337,7 +322,7 @@ ictrl_send(int fd, struct ictrl_session *c)
 	return 0;
 }
 
-struct pdu *
+static struct pdu *
 ictrl_recv(int fd, struct ictrl_session *c)
 {
 	struct msghdr msg;

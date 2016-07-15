@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "buf.h"
+#include "ictrl.h"
 #include "server.h"
 
 __dead void	usage(void);
@@ -88,16 +90,21 @@ usage(void)
 void
 test_init(struct server_context *ctx)
 {
+	// struct ictrl_state *ctrl;
+
+	// ictrl_init();
 }
 
 void
 test_start(struct server_context *ctx)
 {
+	// ictrl_event_init();
 }
 
 void
 test_stop(struct server_context *ctx)
 {
+	// ictrl_cleanup();
 }
 
 void
@@ -109,4 +116,9 @@ int
 test_isdown(struct server_context *ctx)
 {
 	return 0;
+}
+
+void
+test_proc(struct ictrl_session *c, struct pdu *pdu)
+{
 }

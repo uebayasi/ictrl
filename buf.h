@@ -16,6 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/queue.h>
+#include <sys/uio.h>
+
 #define PDU_READ_SIZE		(256 * 1024)
 #define CONTROL_READ_SIZE	8192
 #define PDU_MAXIOV		5
