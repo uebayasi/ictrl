@@ -57,12 +57,12 @@ ictrl_server_init(struct ictrl_config *cf)
 	mode_t			 old_umask;
 
 	if ((ctrl = calloc(1, sizeof(*ctrl))) == NULL) {
-		log_warn("ictrl_init: calloc");
+		log_warn("%s: calloc", __func__);
 		return NULL;
 	}
 
 	if ((fd = socket(AF_UNIX, SOCK_SEQPACKET, 0)) == -1) {
-		log_warn("ictrl_init: socket");
+		log_warn("%s: socket", __func__);
 		return NULL;
 	}
 
@@ -70,20 +70,20 @@ ictrl_server_init(struct ictrl_config *cf)
 	sun.sun_family = AF_UNIX;
 	if (strlcpy(sun.sun_path, cf->path, sizeof(sun.sun_path)) >=
 	    sizeof(sun.sun_path)) {
-		log_warnx("ictrl_init: path %s too long", cf->path);
+		log_warnx("%s: path %s too long", __func__, cf->path);
 		return NULL;
 	}
 
 	if (unlink(cf->path) == -1)
 		if (errno != ENOENT) {
-			log_warn("ictrl_init: unlink %s", cf->path);
+			log_warn("%s: unlink %s", __func__, cf->path);
 			close(fd);
 			return NULL;
 		}
 
 	old_umask = umask(S_IXUSR | S_IXGRP | S_IWOTH | S_IROTH | S_IXOTH);
 	if (bind(fd, (struct sockaddr *)&sun, sizeof(sun)) == -1) {
-		log_warn("ictrl_init: bind: %s", cf->path);
+		log_warn("%s: bind: %s", __func__, cf->path);
 		close(fd);
 		umask(old_umask);
 		return NULL;
@@ -91,14 +91,14 @@ ictrl_server_init(struct ictrl_config *cf)
 	umask(old_umask);
 
 	if (chmod(cf->path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) == -1) {
-		log_warn("ictrl_init: chmod");
+		log_warn("%s: chmod", __func__);
 		close(fd);
 		(void)unlink(cf->path);
 		return NULL;
 	}
 
 	if (listen(fd, CONTROL_BACKLOG) == -1) {
-		log_warn("ictrl_init: listen");
+		log_warn("%s: listen", __func__);
 		close(fd);
 		(void)unlink(cf->path);
 		return NULL;
@@ -168,12 +168,12 @@ ictrl_server_accept(int listenfd, short event, void *v)
 			evtimer_add(&ctrl->evt, &evtpause);
 		} else if (errno != EWOULDBLOCK && errno != EINTR &&
 		    errno != ECONNABORTED)
-			log_warn("ictrl_server_accept");
+			log_warn("%s", __func__);
 		return;
 	}
 
 	if ((c = malloc(sizeof(struct ictrl_session))) == NULL) {
-		log_warn("ictrl_server_accept");
+		log_warn("%s", __func__);
 		close(connfd);
 		return;
 	}
@@ -192,7 +192,8 @@ ictrl_server_dispatch(int fd, short event, void *v)
 	short flags = EV_READ;
 
 	if (event & EV_TIMEOUT) {
-		log_debug("control connection (fd %d) timed out.", fd);
+		log_debug("%s: control connection (fd %d) timed out.",
+		    __func__, fd);
 		ictrl_server_close(c);
 		return;
 	}
@@ -257,7 +258,7 @@ ictrl_client_init(struct ictrl_config *cf)
 	struct ictrl_session	*c;
 
 	if ((ctrl = calloc(1, sizeof(*ctrl))) == NULL) {
-		log_warn("ictrl_client_init: calloc");
+		log_warn("%s: calloc", __func__);
 		return NULL;
 	}
 
