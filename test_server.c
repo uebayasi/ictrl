@@ -29,6 +29,8 @@
 struct test_context {
 	struct ictrl_config *ctrl_cf;
 	struct ictrl_state *ctrl;
+	struct ictrl_config *ctrl_cf2;
+	struct ictrl_state *ctrl2;
 };
 
 __dead void	usage(void);
@@ -40,6 +42,7 @@ void test_server_stop(void *);
 void test_server_shutdown(void *);
 int test_shutdown_isdown(void *);
 void test_ictrl_proc(struct ictrl_session *, struct pdu *);
+void test_ictrl_proc2(struct ictrl_session *, struct pdu *);
 
 int
 main(int argc, char *argv[])
@@ -68,8 +71,14 @@ main(int argc, char *argv[])
 		.backlog = 5,
 		.proc = test_ictrl_proc
 	};
+	struct ictrl_config ctrl_cf2 = {
+		.path = "/var/run/hoge2.sock",
+		.backlog = 5,
+		.proc = test_ictrl_proc2
+	};
 	struct test_context test = {
-		.ctrl_cf = &ctrl_cf
+		.ctrl_cf = &ctrl_cf,
+		.ctrl_cf2 = &ctrl_cf2
 	};
 
 	while ((ch = getopt(argc, argv, "ds:u:vw:")) != -1) {
@@ -126,6 +135,7 @@ test_server_init(void *data)
 	struct test_context *test = data;
 
 	test->ctrl = ictrl_server_init(test->ctrl_cf);
+	test->ctrl2 = ictrl_server_init(test->ctrl_cf2);
 }
 
 void
@@ -133,6 +143,7 @@ test_server_fini(void *data)
 {
 	struct test_context *test = data;
 
+	ictrl_server_fini(test->ctrl2);
 	ictrl_server_fini(test->ctrl);
 }
 
@@ -142,6 +153,7 @@ test_server_start(void *data)
 	struct test_context *test = data;
 
 	ictrl_server_start(test->ctrl);
+	ictrl_server_start(test->ctrl2);
 }
 
 void
@@ -149,6 +161,7 @@ test_server_stop(void *data)
 {
 	struct test_context *test = data;
 
+	ictrl_server_stop(test->ctrl2);
 	ictrl_server_stop(test->ctrl);
 }
 
@@ -180,8 +193,29 @@ test_ictrl_proc(struct ictrl_session *c, struct pdu *pdu)
 		goto done;
 
 	switch (cmh->type) {
-	case 123:
-		ictrl_compose(c, 456, NULL, 0);
+	case 1:
+		ictrl_compose(c, 10, NULL, 0);
+		break;
+	default:
+		break;
+	}
+
+done:
+	pdu_free(pdu);
+}
+
+void
+test_ictrl_proc2(struct ictrl_session *c, struct pdu *pdu)
+{
+	struct ictrl_msghdr *cmh;
+
+	cmh = pdu_getbuf(pdu, NULL, 0);
+	if (cmh == NULL)
+		goto done;
+
+	switch (cmh->type) {
+	case 2:
+		ictrl_compose(c, 20, NULL, 0);
 		break;
 	default:
 		break;

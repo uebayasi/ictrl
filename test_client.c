@@ -15,6 +15,7 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 
 #include "buf.h"
 #include "ictrl.h"
@@ -30,19 +31,30 @@ main(int argc, char *argv[])
 	char *msg = "hoge";
 	struct pdu *pdu;
 	struct ictrl_msghdr *cmh;
+	int id = 1;
+	int ch;
+
+	while ((ch = getopt(argc, argv, "n:s:")) != -1) {
+		switch (ch) {
+		case 'n':
+			id = atoi(optarg);
+			break;
+		case 's':
+			config.path = optarg;
+			break;
+		}
+	}
 
 	c = ictrl_client_init(&config);
 
 	// {
-	ictrl_compose(c, 123, msg, 5);
+	ictrl_compose(c, id, msg, 5);
 	ictrl_send(c);
 	pdu = ictrl_recv(c);
 	cmh = pdu_getbuf(pdu, NULL, 0);
-	switch (cmh->type) {
-	case 456:
+	if (cmh->type == id * 10) {
 		printf("success!\n");
-		break;
-	default:
+	} else {
 		return 1;
 	}
 	pdu_free(pdu);
