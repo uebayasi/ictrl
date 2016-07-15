@@ -3,3 +3,5 @@
 *.po
 .*.swp
 test
+test_server
+test_client

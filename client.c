@@ -33,40 +33,45 @@
 
 #include "ictrl.h"
 #include "buf.h"
+#include "client.h"
 
-struct control {
-	struct pduq	channel;
-	int		fd;
-} control;
-
-void
-ictrl_connect(char *sockname)
+struct client_state *
+ictrl_connect(struct client_config *cf)
 {
+	struct client_state *client;
 	struct sockaddr_un sun;
 
-	/* connect to iscsid control socket */
-	TAILQ_INIT(&control.channel);
-	if ((control.fd = socket(AF_UNIX, SOCK_SEQPACKET, 0)) == -1)
+	if ((client = calloc(1, sizeof(*client))) == NULL) {
+		log_warn("ictrl_init: calloc");
+		return NULL;
+	}
+
+	TAILQ_INIT(&client->channel);
+	if ((client->fd = socket(AF_UNIX, SOCK_SEQPACKET, 0)) == -1)
 		err(1, "socket");
 
 	bzero(&sun, sizeof(sun));
 	sun.sun_family = AF_UNIX;
-	strlcpy(sun.sun_path, sockname, sizeof(sun.sun_path));
+	strlcpy(sun.sun_path, cf->sockname, sizeof(sun.sun_path));
 
-	if (connect(control.fd, (struct sockaddr *)&sun, sizeof(sun)) == -1)
-		err(1, "connect: %s", sockname);
+	if (connect(client->fd, (struct sockaddr *)&sun, sizeof(sun)) == -1)
+		err(1, "connect: %s", cf->sockname);
+
+	return client;
 }
 
 void
-ictrl_close(void)
+ictrl_close(struct client_state *client)
 {
-	close(control.fd);
+	close(client->fd);
 }
 
 void
 ictrl_queue(void *ch, struct pdu *pdu)
 {
-	TAILQ_INSERT_TAIL(&control.channel, pdu, entry);
+	struct client_state *client = ch;
+
+	TAILQ_INSERT_TAIL(&client->channel, pdu, entry);
 }
 
 int

@@ -1,3 +1,4 @@
 all:
 	make
-	make -f test.mk
+	make -f test_server.mk
+	make -f test_client.mk
