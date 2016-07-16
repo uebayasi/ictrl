@@ -41,6 +41,9 @@ static void	ictrl_server_dispatch(int, short, void *);
 static void	ictrl_server_close(struct ictrl_session *);
 static void	ictrl_server_trigger(struct ictrl_session *);
 static struct pdu *
+		ictrl_compose(struct ictrl_session *, u_int16_t, int,
+		    struct iovec *);
+static struct pdu *
 		ictrl_decompose(char *, size_t);
 
 /*
@@ -310,10 +313,31 @@ ictrl_client_fini(struct ictrl_session *c)
 int
 ictrl_build(struct ictrl_session *c, u_int16_t type, void *buf, size_t len)
 {
-	return ictrl_compose(c, type, 1, CTRLARGV({ buf, len }));
+	return ictrl_buildv(c, type, 1, CTRLARGV({ buf, len }));
 }
 
 int
+ictrl_buildv(struct ictrl_session *c, u_int16_t type, int argc,
+    struct iovec *argv)
+{
+	struct pdu *pdu;
+
+	pdu = ictrl_compose(c, type, argc, argv);
+	if (pdu == NULL)
+		return -1;
+
+	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
+
+	/*
+	 * Schedule a next event for server.
+	 */
+	if (c->fd != -1)
+		ictrl_server_trigger(c);
+
+	return 0;
+}
+
+static struct pdu *
 ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
     struct iovec *argv)
 {
@@ -323,15 +347,15 @@ ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
 	int i;
 
 	if (argc > (int)nitems(cmh->len))
-		return -1;
+		return NULL;
 
 	for (i = 0; i < argc; i++)
 		size += argv[i].iov_len;
 	if (PDU_LEN(size) > sizeof(c->buf) - PDU_LEN(sizeof(*cmh)))
-		return -1;
+		return NULL;
 
 	if ((pdu = pdu_new()) == NULL)
-		return -1;
+		return NULL;
 	if ((cmh = malloc(sizeof(*cmh))) == NULL)
 		goto fail;
 	bzero(cmh, sizeof(*cmh));
@@ -349,18 +373,10 @@ ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
 			pdu_addbuf(pdu, ptr, argv[i].iov_len, i + 1);
 		}
 
-	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
-
-	/*
-	 * Schedule a next event for server.
-	 */
-	if (c->fd != -1)
-		ictrl_server_trigger(c);
-
-	return 0;
+	return pdu;
 fail:
 	pdu_free(pdu);
-	return -1;
+	return NULL;
 }
 
 static struct pdu *

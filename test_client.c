@@ -61,7 +61,7 @@ main(int argc, char *argv[])
 
 	// {
 	//ictrl_build(c, id, strs[id - 1], 5);
-	ictrl_compose(c, id, 2, iov);
+	ictrl_buildv(c, id, 2, iov);
 
 	ictrl_send(c);
 	pdu = ictrl_recv(c);

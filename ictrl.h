@@ -47,7 +47,7 @@ void		ictrl_client_fini(struct ictrl_session *);
 
 int		ictrl_build(struct ictrl_session *, u_int16_t, void *,
 		    size_t);
-int		ictrl_compose(struct ictrl_session *, u_int16_t, int,
+int		ictrl_buildv(struct ictrl_session *, u_int16_t, int,
 		    struct iovec *);
 int		ictrl_send(struct ictrl_session *);
 struct pdu	*ictrl_recv(struct ictrl_session *);
