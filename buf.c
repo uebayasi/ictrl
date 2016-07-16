@@ -31,7 +31,6 @@
 #include <unistd.h>
 
 #include "buf.h"
-#include "ictrl.h"
 
 struct pdu *
 pdu_new(void)
@@ -112,53 +111,4 @@ pdu_free_queue(struct pduq *channel)
 		TAILQ_REMOVE(channel, p, entry);
 		pdu_free(p);
 	}
-}
-
-/* XXX ictrl */
-struct pdu *
-pdu_get(char *buf, size_t len)
-{
-	struct pdu *p;
-	struct ictrl_msghdr *cmh;
-	void *data;
-	size_t n;
-	int i;
-
-	if (len < sizeof(*cmh))
-		return NULL;
-
-	if (!(p = pdu_new()))
-		return NULL;
-
-	n = sizeof(*cmh);
-	cmh = pdu_alloc(n);
-	memcpy(cmh, buf, n);
-	buf += n;
-	len -= n;
-
-	if (pdu_addbuf(p, cmh, n, 0)) {
-		free(cmh);
-fail:
-		pdu_free(p);
-		return NULL;
-	}
-
-	for (i = 0; i < nitems(cmh->len); i++) {
-		n = cmh->len[i];
-		if (n == 0)
-			continue;
-		if (PDU_LEN(n) > len)
-			goto fail;
-		if (!(data = pdu_alloc(n)))
-			goto fail;
-		memcpy(data, buf, n);
-		if (pdu_addbuf(p, data, n, i + 1)) {
-			free(data);
-			goto fail;
-		}
-		buf += PDU_LEN(n);
-		len -= PDU_LEN(n);
-	}
-
-	return p;
 }
