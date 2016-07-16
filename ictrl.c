@@ -327,7 +327,7 @@ ictrl_build(struct ictrl_session *c, u_int16_t type, int argc,
 
 	for (i = 0; i < argc; i++)
 		size += argv[i].iov_len;
-	if (PDU_LEN(size) > CONTROL_READ_SIZE - PDU_LEN(sizeof(*cmh)))
+	if (PDU_LEN(size) > sizeof(c->buf) - PDU_LEN(sizeof(*cmh)))
 		return -1;
 
 	if ((pdu = pdu_new()) == NULL)
@@ -366,14 +366,15 @@ fail:
 int
 ictrl_send(struct ictrl_session *c)
 {
-	struct iovec iov[PDU_MAXIOV];
 	struct msghdr msg;
 	struct pdu *pdu;
+	struct iovec iov[nitems(pdu->iov)];
 	unsigned int niov = 0;
 	int fd = (c->fd != -1) ? c->fd : c->state->fd;
 
 	if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
-		for (niov = 0; niov < PDU_MAXIOV; niov++) {
+
+		for (niov = 0; niov < nitems(iov); niov++) {
 			iov[niov].iov_base = pdu->iov[niov].iov_base;
 			iov[niov].iov_len = pdu->iov[niov].iov_len;
 		}

@@ -66,7 +66,7 @@ pdu_addbuf(struct pdu *p, void *buf, size_t len, unsigned int elm)
 		len = PDU_LEN(len);
 	}
 
-	if (elm < PDU_MAXIOV)
+	if (elm < nitems(p->iov))
 		if (!p->iov[elm].iov_base) {
 			p->iov[elm].iov_base = buf;
 			p->iov[elm].iov_len = len;
@@ -82,7 +82,7 @@ pdu_getbuf(struct pdu *p, size_t *len, unsigned int elm)
 {
 	if (len)
 		*len = 0;
-	if (elm < PDU_MAXIOV)
+	if (elm < nitems(p->iov))
 		if (p->iov[elm].iov_base) {
 			if (len)
 				*len = p->iov[elm].iov_len;
@@ -97,7 +97,7 @@ pdu_free(struct pdu *p)
 {
 	unsigned int j;
 
-	for (j = 0; j < PDU_MAXIOV; j++)
+	for (j = 0; j < nitems(p->iov); j++)
 		free(p->iov[j].iov_base);
 	free(p);
 }
