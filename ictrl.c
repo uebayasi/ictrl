@@ -41,7 +41,7 @@ static void	ictrl_server_dispatch(int, short, void *);
 static void	ictrl_server_close(struct ictrl_session *);
 static void	ictrl_server_trigger(struct ictrl_session *);
 static struct pdu *
-		ictrl_getpdu(char *, size_t);
+		ictrl_decompose(char *, size_t);
 
 /*
  * API for server
@@ -404,11 +404,11 @@ ictrl_recv(struct ictrl_session *c)
 	if (n == 0)
 		return NULL;
 
-	return ictrl_getpdu(c->buf, n);
+	return ictrl_decompose(c->buf, n);
 }
 
 static struct pdu *
-ictrl_getpdu(char *buf, size_t len)
+ictrl_decompose(char *buf, size_t len)
 {
 	struct pdu *p;
 	struct ictrl_msghdr *cmh;
