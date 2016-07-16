@@ -363,50 +363,6 @@ fail:
 	return -1;
 }
 
-int
-ictrl_send(struct ictrl_session *c)
-{
-	struct msghdr msg;
-	struct pdu *pdu;
-	struct iovec iov[nitems(pdu->iov)];
-	unsigned int niov = 0;
-	int fd = (c->fd != -1) ? c->fd : c->state->fd;
-
-	if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
-
-		for (niov = 0; niov < nitems(iov); niov++) {
-			iov[niov].iov_base = pdu->iov[niov].iov_base;
-			iov[niov].iov_len = pdu->iov[niov].iov_len;
-		}
-		bzero(&msg, sizeof(msg));
-		msg.msg_iov = iov;
-		msg.msg_iovlen = niov;
-		if (sendmsg(fd, &msg, 0) == -1) {
-			if (errno == EAGAIN || errno == ENOBUFS)
-				return EAGAIN;
-			return -1;
-		}
-		TAILQ_REMOVE(&c->channel, pdu, entry);
-	}
-	return 0;
-}
-
-struct pdu *
-ictrl_recv(struct ictrl_session *c)
-{
-	ssize_t n;
-	int fd = (c->fd != -1) ? c->fd : c->state->fd;
-
-	if ((n = recv(fd, c->buf, sizeof(c->buf), 0)) == -1 &&
-	    !(errno == EAGAIN || errno == EINTR))
-		return NULL;
-
-	if (n == 0)
-		return NULL;
-
-	return ictrl_decompose(c->buf, n);
-}
-
 static struct pdu *
 ictrl_decompose(char *buf, size_t len)
 {
@@ -453,4 +409,48 @@ fail:
 	}
 
 	return p;
+}
+
+int
+ictrl_send(struct ictrl_session *c)
+{
+	struct msghdr msg;
+	struct pdu *pdu;
+	struct iovec iov[nitems(pdu->iov)];
+	unsigned int niov = 0;
+	int fd = (c->fd != -1) ? c->fd : c->state->fd;
+
+	if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
+
+		for (niov = 0; niov < nitems(iov); niov++) {
+			iov[niov].iov_base = pdu->iov[niov].iov_base;
+			iov[niov].iov_len = pdu->iov[niov].iov_len;
+		}
+		bzero(&msg, sizeof(msg));
+		msg.msg_iov = iov;
+		msg.msg_iovlen = niov;
+		if (sendmsg(fd, &msg, 0) == -1) {
+			if (errno == EAGAIN || errno == ENOBUFS)
+				return EAGAIN;
+			return -1;
+		}
+		TAILQ_REMOVE(&c->channel, pdu, entry);
+	}
+	return 0;
+}
+
+struct pdu *
+ictrl_recv(struct ictrl_session *c)
+{
+	ssize_t n;
+	int fd = (c->fd != -1) ? c->fd : c->state->fd;
+
+	if ((n = recv(fd, c->buf, sizeof(c->buf), 0)) == -1 &&
+	    !(errno == EAGAIN || errno == EINTR))
+		return NULL;
+
+	if (n == 0)
+		return NULL;
+
+	return ictrl_decompose(c->buf, n);
 }
