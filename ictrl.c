@@ -435,7 +435,7 @@ fail:
 			continue;
 		if (PDU_LEN(n) > len)
 			goto fail;
-		if (!(data = pdu_alloc(n)))
+		if ((data = pdu_alloc(n)) == NULL)
 			goto fail;
 		memcpy(data, buf, n);
 		if (pdu_addbuf(p, data, n, i + 1)) {
