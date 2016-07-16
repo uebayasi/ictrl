@@ -41,8 +41,7 @@ static void	ictrl_server_dispatch(int, short, void *);
 static void	ictrl_server_close(struct ictrl_session *);
 static void	ictrl_server_trigger(struct ictrl_session *);
 static struct pdu *
-		ictrl_compose(struct ictrl_session *, u_int16_t, int,
-		    struct iovec *);
+		ictrl_compose(int, struct iovec *);
 static struct pdu *
 		ictrl_decompose(char *, size_t);
 
@@ -321,10 +320,13 @@ ictrl_buildv(struct ictrl_session *c, u_int16_t type, int argc,
     struct iovec *argv)
 {
 	struct pdu *pdu;
+	struct ictrl_msghdr *cmh;
 
-	pdu = ictrl_compose(c, type, argc, argv);
+	pdu = ictrl_compose(argc, argv);
 	if (pdu == NULL)
 		return -1;
+	cmh = pdu_getbuf(pdu, NULL, 0);
+	cmh->type = type;
 
 	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
 
@@ -338,8 +340,7 @@ ictrl_buildv(struct ictrl_session *c, u_int16_t type, int argc,
 }
 
 static struct pdu *
-ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
-    struct iovec *argv)
+ictrl_compose(int argc, struct iovec *argv)
 {
 	struct pdu *pdu;
 	struct ictrl_msghdr *cmh;
@@ -351,7 +352,7 @@ ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
 
 	for (i = 0; i < argc; i++)
 		n += argv[i].iov_len;
-	if (PDU_LEN(n) > sizeof(c->buf) - PDU_LEN(sizeof(*cmh)))
+	if (PDU_LEN(n) > CONTROL_READ_SIZE - PDU_LEN(sizeof(*cmh)))
 		return NULL;
 
 	if ((pdu = pdu_new()) == NULL)
@@ -359,7 +360,6 @@ ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
 	if ((cmh = malloc(sizeof(*cmh))) == NULL)
 		goto fail;
 	bzero(cmh, sizeof(*cmh));
-	cmh->type = type;
 	pdu_addbuf(pdu, cmh, sizeof(*cmh), 0);
 
 	for (i = 0; i < argc; i++) {
