@@ -362,16 +362,17 @@ ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
 	cmh->type = type;
 	pdu_addbuf(pdu, cmh, sizeof(*cmh), 0);
 
-	for (i = 0; i < argc; i++)
-		if (argv[i].iov_len > 0) {
-			void *ptr;
+	for (i = 0; i < argc; i++) {
+		void *ptr;
 
-			cmh->len[i] = argv[i].iov_len;
-			if ((ptr = pdu_alloc(argv[i].iov_len)) == NULL)
-				goto fail;
-			memcpy(ptr, argv[i].iov_base, argv[i].iov_len);
-			pdu_addbuf(pdu, ptr, argv[i].iov_len, i + 1);
-		}
+		if (argv[i].iov_len <= 0)
+			continue;
+		cmh->len[i] = argv[i].iov_len;
+		if ((ptr = pdu_alloc(argv[i].iov_len)) == NULL)
+			goto fail;
+		memcpy(ptr, argv[i].iov_base, argv[i].iov_len);
+		pdu_addbuf(pdu, ptr, argv[i].iov_len, i + 1);
+	}
 
 	return pdu;
 
@@ -406,18 +407,18 @@ ictrl_decompose(char *buf, size_t len)
 	}
 
 	for (i = 0; i < nitems(cmh->len); i++) {
-		void *data;
+		void *ptr;
 
 		n = cmh->len[i];
 		if (n == 0)
 			continue;
 		if (PDU_LEN(n) > len)
 			goto fail;
-		if ((data = pdu_alloc(n)) == NULL)
+		if ((ptr = pdu_alloc(n)) == NULL)
 			goto fail;
-		memcpy(data, buf, n);
-		if (pdu_addbuf(pdu, data, n, i + 1)) {
-			free(data);
+		memcpy(ptr, buf, n);
+		if (pdu_addbuf(pdu, ptr, n, i + 1)) {
+			free(ptr);
 			goto fail;
 		}
 		buf += PDU_LEN(n);
