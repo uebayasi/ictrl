@@ -382,7 +382,7 @@ fail:
 static struct pdu *
 ictrl_decompose(char *buf, size_t len)
 {
-	struct pdu *p;
+	struct pdu *pdu;
 	struct ictrl_msghdr *cmh;
 	void *data;
 	size_t n;
@@ -391,7 +391,7 @@ ictrl_decompose(char *buf, size_t len)
 	if (len < sizeof(*cmh))
 		return NULL;
 
-	if (!(p = pdu_new()))
+	if ((pdu = pdu_new()) == NULL)
 		return NULL;
 
 	n = sizeof(*cmh);
@@ -400,10 +400,10 @@ ictrl_decompose(char *buf, size_t len)
 	buf += n;
 	len -= n;
 
-	if (pdu_addbuf(p, cmh, n, 0)) {
+	if (pdu_addbuf(pdu, cmh, n, 0)) {
 		free(cmh);
 fail:
-		pdu_free(p);
+		pdu_free(pdu);
 		return NULL;
 	}
 
@@ -416,7 +416,7 @@ fail:
 		if ((data = pdu_alloc(n)) == NULL)
 			goto fail;
 		memcpy(data, buf, n);
-		if (pdu_addbuf(p, data, n, i + 1)) {
+		if (pdu_addbuf(pdu, data, n, i + 1)) {
 			free(data);
 			goto fail;
 		}
@@ -424,7 +424,7 @@ fail:
 		len -= PDU_LEN(n);
 	}
 
-	return p;
+	return pdu;
 }
 
 int
