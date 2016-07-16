@@ -43,6 +43,5 @@ void	*pdu_dup(void *, size_t);
 int	pdu_addbuf(struct pdu *, void *, size_t, unsigned int);
 void	*pdu_getbuf(struct pdu *, size_t *, unsigned int);
 void	pdu_free(struct pdu *);
-void	pdu_free_queue(struct pduq *);
 
 #endif /* _ICTRL_BUF_H_ */

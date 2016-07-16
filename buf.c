@@ -101,14 +101,3 @@ pdu_free(struct pdu *p)
 		free(p->iov[j].iov_base);
 	free(p);
 }
-
-void
-pdu_free_queue(struct pduq *channel)
-{
-	struct pdu *p;
-
-	while ((p = TAILQ_FIRST(channel))) {
-		TAILQ_REMOVE(channel, p, entry);
-		pdu_free(p);
-	}
-}

@@ -220,6 +220,8 @@ ictrl_server_dispatch(int fd, short event, void *v)
 static void
 ictrl_server_close(struct ictrl_session *c)
 {
+	struct pdu *pdu;
+
 	event_del(&c->ev);
 	close(c->fd);
 
@@ -229,7 +231,10 @@ ictrl_server_close(struct ictrl_session *c)
 		event_add(&c->state->ev, NULL);
 	}
 
-	pdu_free_queue(&c->channel);
+	while ((pdu = TAILQ_FIRST(&c->channel))) {
+		TAILQ_REMOVE(&c->channel, pdu, entry);
+		pdu_free(pdu);
+	}
 	free(c);
 }
 
