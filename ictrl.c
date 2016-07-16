@@ -343,15 +343,15 @@ ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
 {
 	struct pdu *pdu;
 	struct ictrl_msghdr *cmh;
-	size_t size = 0;
+	size_t n = 0;
 	int i;
 
 	if (argc > (int)nitems(cmh->len))
 		return NULL;
 
 	for (i = 0; i < argc; i++)
-		size += argv[i].iov_len;
-	if (PDU_LEN(size) > sizeof(c->buf) - PDU_LEN(sizeof(*cmh)))
+		n += argv[i].iov_len;
+	if (PDU_LEN(n) > sizeof(c->buf) - PDU_LEN(sizeof(*cmh)))
 		return NULL;
 
 	if ((pdu = pdu_new()) == NULL)
@@ -374,6 +374,7 @@ ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
 		}
 
 	return pdu;
+
 fail:
 	pdu_free(pdu);
 	return NULL;
@@ -384,7 +385,6 @@ ictrl_decompose(char *buf, size_t len)
 {
 	struct pdu *pdu;
 	struct ictrl_msghdr *cmh;
-	void *data;
 	size_t n;
 	int i;
 
@@ -402,12 +402,12 @@ ictrl_decompose(char *buf, size_t len)
 
 	if (pdu_addbuf(pdu, cmh, n, 0)) {
 		free(cmh);
-fail:
-		pdu_free(pdu);
-		return NULL;
+		goto fail;
 	}
 
 	for (i = 0; i < nitems(cmh->len); i++) {
+		void *data;
+
 		n = cmh->len[i];
 		if (n == 0)
 			continue;
@@ -425,6 +425,10 @@ fail:
 	}
 
 	return pdu;
+
+fail:
+	pdu_free(pdu);
+	return NULL;
 }
 
 int
