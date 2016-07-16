@@ -23,7 +23,6 @@
 #include <sys/uio.h>
 
 #define PDU_READ_SIZE		(256 * 1024)
-#define CONTROL_READ_SIZE	8192
 #define PDU_MAXIOV		5
 #define PDU_WRIOV		(PDU_MAXIOV * 8)
 #define PDU_ALIGN		4

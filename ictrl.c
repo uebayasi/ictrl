@@ -352,7 +352,7 @@ ictrl_compose(int argc, struct iovec *argv)
 
 	for (i = 0; i < argc; i++)
 		n += argv[i].iov_len;
-	if (PDU_LEN(n) > CONTROL_READ_SIZE - PDU_LEN(sizeof(*cmh)))
+	if (PDU_LEN(n) > ICTRL_READ_SIZE - PDU_LEN(sizeof(*cmh)))
 		return NULL;
 
 	if ((pdu = pdu_new()) == NULL)
