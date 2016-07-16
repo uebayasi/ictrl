@@ -60,8 +60,8 @@ main(int argc, char *argv[])
 	c = ictrl_client_init(&config);
 
 	// {
-	//ictrl_compose(c, id, strs[id - 1], 5);
-	ictrl_build(c, id, 2, iov);
+	//ictrl_build(c, id, strs[id - 1], 5);
+	ictrl_compose(c, id, 2, iov);
 
 	ictrl_send(c);
 	pdu = ictrl_recv(c);

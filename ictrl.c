@@ -308,13 +308,13 @@ ictrl_client_fini(struct ictrl_session *c)
 #define CTRLARGV(x...)	((struct iovec []){ x })
 
 int
-ictrl_compose(struct ictrl_session *c, u_int16_t type, void *buf, size_t len)
+ictrl_build(struct ictrl_session *c, u_int16_t type, void *buf, size_t len)
 {
-	return ictrl_build(c, type, 1, CTRLARGV({ buf, len }));
+	return ictrl_compose(c, type, 1, CTRLARGV({ buf, len }));
 }
 
 int
-ictrl_build(struct ictrl_session *c, u_int16_t type, int argc,
+ictrl_compose(struct ictrl_session *c, u_int16_t type, int argc,
     struct iovec *argv)
 {
 	struct pdu *pdu;

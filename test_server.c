@@ -202,7 +202,7 @@ test_ictrl_proc(struct ictrl_session *c, struct pdu *pdu)
 		str = pdu_getbuf(pdu, &len, 2);
 		printf("str=%s\n", str);
 
-		ictrl_compose(c, 10, NULL, 0);
+		ictrl_build(c, 10, NULL, 0);
 		break;
 	default:
 		break;
@@ -231,7 +231,7 @@ test_ictrl_proc2(struct ictrl_session *c, struct pdu *pdu)
 		str = pdu_getbuf(pdu, &len, 2);
 		printf("str=%s\n", str);
 
-		ictrl_compose(c, 20, NULL, 0);
+		ictrl_build(c, 20, NULL, 0);
 		break;
 	default:
 		break;
