@@ -435,13 +435,13 @@ fail:
 int
 ictrl_send(struct ictrl_session *c)
 {
-	struct msghdr msg;
 	struct pdu *pdu;
-	struct iovec iov[nitems(pdu->iov)];
-	unsigned int niov = 0;
-	int fd = (c->fd != -1) ? c->fd : c->state->fd;
 
 	if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
+		struct iovec iov[nitems(pdu->iov)];
+		unsigned int niov = 0;
+		struct msghdr msg;
+		int fd = (c->fd != -1) ? c->fd : c->state->fd;
 
 		for (niov = 0; niov < nitems(iov); niov++) {
 			iov[niov].iov_base = pdu->iov[niov].iov_base;

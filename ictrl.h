@@ -8,6 +8,7 @@
 #include "buf.h"
 
 #define ICTRL_READ_SIZE		8192
+#define ICTRL_BUF_NUM		3
 
 struct ictrl_config;
 struct ictrl_session;
@@ -61,7 +62,7 @@ struct pdu	*ictrl_recv(struct ictrl_session *);
 
 struct ictrl_msghdr {
 	u_int16_t	type;
-	u_int16_t	len[3];
+	u_int16_t	len[ICTRL_BUF_NUM];
 };
 
 #endif /* _ICTRL_ICTRL_H_ */
