@@ -187,6 +187,8 @@ void
 test_ictrl_proc(struct ictrl_session *c, struct pdu *pdu)
 {
 	struct ictrl_msghdr *cmh;
+	char *str;
+	size_t len;
 
 	cmh = pdu_getbuf(pdu, NULL, 0);
 	if (cmh == NULL)
@@ -194,6 +196,12 @@ test_ictrl_proc(struct ictrl_session *c, struct pdu *pdu)
 
 	switch (cmh->type) {
 	case 1:
+		printf("got 1!\n");
+		str = pdu_getbuf(pdu, &len, 1);
+		printf("str=%s\n", str);
+		str = pdu_getbuf(pdu, &len, 2);
+		printf("str=%s\n", str);
+
 		ictrl_compose(c, 10, NULL, 0);
 		break;
 	default:
@@ -208,13 +216,21 @@ void
 test_ictrl_proc2(struct ictrl_session *c, struct pdu *pdu)
 {
 	struct ictrl_msghdr *cmh;
+	char *str;
+	size_t len;
 
-	cmh = pdu_getbuf(pdu, NULL, 0);
+	cmh = pdu_getbuf(pdu, &len, 0);
 	if (cmh == NULL)
 		goto done;
 
 	switch (cmh->type) {
 	case 2:
+		printf("got 2!\n");
+		str = pdu_getbuf(pdu, &len, 1);
+		printf("str=%s\n", str);
+		str = pdu_getbuf(pdu, &len, 2);
+		printf("str=%s\n", str);
+
 		ictrl_compose(c, 20, NULL, 0);
 		break;
 	default:

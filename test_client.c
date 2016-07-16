@@ -15,6 +15,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "buf.h"
@@ -28,11 +29,18 @@ int
 main(int argc, char *argv[])
 {
 	struct ictrl_session *c;
-	char *str = "hoge";
+	char *strs[] = { "hoge", "fuga" };
 	struct pdu *pdu;
 	struct ictrl_msghdr *cmh;
 	int id = 1;
 	int ch;
+
+	struct iovec iov[PDU_MAXIOV] = {
+		[0] = {
+			.iov_base = "common",
+			.iov_len = 7
+		}
+	};
 
 	while ((ch = getopt(argc, argv, "n:s:")) != -1) {
 		switch (ch) {
@@ -45,10 +53,16 @@ main(int argc, char *argv[])
 		}
 	}
 
+	char *s = strs[id - 1];
+	iov[1].iov_base = s;
+	iov[1].iov_len = strlen(s) + 1;
+
 	c = ictrl_client_init(&config);
 
 	// {
-	ictrl_compose(c, id, str, 5);
+	//ictrl_compose(c, id, strs[id - 1], 5);
+	ictrl_build(c, id, 2, iov);
+
 	ictrl_send(c);
 	pdu = ictrl_recv(c);
 	cmh = pdu_getbuf(pdu, NULL, 0);

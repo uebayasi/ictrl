@@ -114,6 +114,7 @@ pdu_free_queue(struct pduq *channel)
 	}
 }
 
+/* XXX ictrl */
 struct pdu *
 pdu_get(char *buf, size_t len)
 {
