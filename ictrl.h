@@ -12,7 +12,6 @@ struct ictrl_session;
 struct ictrl_state;
 struct pdu;
 struct ictrl_msghdr;
-struct ictrl_msgbuf;
 
 struct ictrl_config {
 	char			*path;
@@ -49,7 +48,7 @@ void		ictrl_client_fini(struct ictrl_session *);
 int		ictrl_compose(struct ictrl_session *, u_int16_t, void *,
 		    size_t);
 int		ictrl_build(struct ictrl_session *, u_int16_t, int,
-		    struct ictrl_msgbuf *);
+		    struct iovec *);
 int		ictrl_send(struct ictrl_session *);
 struct pdu	*ictrl_recv(struct ictrl_session *);
 
@@ -61,11 +60,6 @@ struct pdu	*ictrl_recv(struct ictrl_session *);
 struct ictrl_msghdr {
 	u_int16_t	type;
 	u_int16_t	len[3];
-};
-
-struct ictrl_msgbuf {
-	void		*buf;
-	size_t		 len;
 };
 
 #endif /* _ICTRL_ICTRL_H_ */

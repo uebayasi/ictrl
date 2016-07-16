@@ -298,7 +298,7 @@ ictrl_client_fini(struct ictrl_session *c)
  * API for both server and client
  */
 
-#define CTRLARGV(x...)	((struct ictrl_msgbuf []){ x })
+#define CTRLARGV(x...)	((struct iovec []){ x })
 
 int
 ictrl_compose(struct ictrl_session *c, u_int16_t type, void *buf, size_t len)
@@ -308,7 +308,7 @@ ictrl_compose(struct ictrl_session *c, u_int16_t type, void *buf, size_t len)
 
 int
 ictrl_build(struct ictrl_session *c, u_int16_t type, int argc,
-    struct ictrl_msgbuf *argv)
+    struct iovec *argv)
 {
 	struct pdu *pdu;
 	struct ictrl_msghdr *cmh;
@@ -319,7 +319,7 @@ ictrl_build(struct ictrl_session *c, u_int16_t type, int argc,
 		return -1;
 
 	for (i = 0; i < argc; i++)
-		size += argv[i].len;
+		size += argv[i].iov_len;
 	if (PDU_LEN(size) > CONTROL_READ_SIZE - PDU_LEN(sizeof(*cmh)))
 		return -1;
 
@@ -332,14 +332,14 @@ ictrl_build(struct ictrl_session *c, u_int16_t type, int argc,
 	pdu_addbuf(pdu, cmh, sizeof(*cmh), 0);
 
 	for (i = 0; i < argc; i++)
-		if (argv[i].len > 0) {
+		if (argv[i].iov_len > 0) {
 			void *ptr;
 
-			cmh->len[i] = argv[i].len;
-			if ((ptr = pdu_alloc(argv[i].len)) == NULL)
+			cmh->len[i] = argv[i].iov_len;
+			if ((ptr = pdu_alloc(argv[i].iov_len)) == NULL)
 				goto fail;
-			memcpy(ptr, argv[i].buf, argv[i].len);
-			pdu_addbuf(pdu, ptr, argv[i].len, i + 1);
+			memcpy(ptr, argv[i].iov_base, argv[i].iov_len);
+			pdu_addbuf(pdu, ptr, argv[i].iov_len, i + 1);
 		}
 
 	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
