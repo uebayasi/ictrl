@@ -26,8 +26,9 @@
 #define CONTROL_READ_SIZE	8192
 #define PDU_MAXIOV		5
 #define PDU_WRIOV		(PDU_MAXIOV * 8)
-
-#define PDU_LEN(x)	((((x) + 3) / 4) * 4)
+#define PDU_ALIGN		4
+#define PDU_MASK		(PDU_ALIGN - 1)
+#define PDU_LEN(x)		((((x) + PDU_MASK) / PDU_ALIGN) * PDU_ALIGN)
 
 struct pdu {
 	TAILQ_ENTRY(pdu)	 entry;

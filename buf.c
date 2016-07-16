@@ -62,9 +62,9 @@ pdu_dup(void *data, size_t len)
 int
 pdu_addbuf(struct pdu *p, void *buf, size_t len, unsigned int elm)
 {
-	if (len & 0x3) {
-		bzero((char *)buf + len, 4 - (len & 0x3));
-		len += 4 - (len & 0x3);
+	if (len & PDU_MASK) {
+		bzero((char *)buf + len, PDU_ALIGN - (len & PDU_MASK));
+		len = PDU_LEN(len);
 	}
 
 	if (elm < PDU_MAXIOV)
@@ -142,7 +142,7 @@ fail:
 		return NULL;
 	}
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < nitems(cmh->len); i++) {
 		n = cmh->len[i];
 		if (n == 0)
 			continue;
