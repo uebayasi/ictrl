@@ -234,10 +234,8 @@ ictrl_server_close(struct ictrl_session *c)
 static void
 ictrl_server_trigger(struct ictrl_session *c)
 {
-	short flags = EV_READ;
+	short flags = EV_READ | (TAILQ_EMPTY(&c->channel) ? 0 : EV_WRITE);
 
-	if (!TAILQ_EMPTY(&c->channel))
-		flags |= EV_WRITE;
 	event_del(&c->ev);
 	event_set(&c->ev, c->fd, flags, ictrl_server_dispatch, c);
 	event_add(&c->ev, NULL);
