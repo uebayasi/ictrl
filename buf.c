@@ -65,39 +65,35 @@ pdu_addbuf(struct pdu *p, void *buf, size_t len, unsigned int elm)
 		bzero((char *)buf + len, PDU_ALIGN - (len & PDU_MASK));
 		len = PDU_LEN(len);
 	}
-
-	if (elm < nitems(p->iov))
-		if (!p->iov[elm].iov_base) {
-			p->iov[elm].iov_base = buf;
-			p->iov[elm].iov_len = len;
-			return 0;
-		}
-
-	/* no space left */
-	return -1;
+	if (elm >= nitems(p->iov))
+		return -1;
+	if (p->iov[elm].iov_base)
+		return -1;
+	p->iov[elm].iov_base = buf;
+	p->iov[elm].iov_len = len;
+	return 0;
 }
 
 void *
 pdu_getbuf(struct pdu *p, size_t *len, unsigned int elm)
 {
-	if (len)
+	if (len != NULL)
 		*len = 0;
-	if (elm < nitems(p->iov))
-		if (p->iov[elm].iov_base) {
-			if (len)
-				*len = p->iov[elm].iov_len;
-			return p->iov[elm].iov_base;
-		}
-
-	return NULL;
+	if (elm >= nitems(p->iov))
+		return NULL;
+	if (p->iov[elm].iov_base == 0)
+		return NULL;
+	if (len != NULL)
+		*len = p->iov[elm].iov_len;
+	return p->iov[elm].iov_base;
 }
 
 void
 pdu_free(struct pdu *p)
 {
-	unsigned int j;
+	unsigned int i;
 
-	for (j = 0; j < nitems(p->iov); j++)
-		free(p->iov[j].iov_base);
+	for (i = 0; i < nitems(p->iov); i++)
+		free(p->iov[i].iov_base);
 	free(p);
 }
