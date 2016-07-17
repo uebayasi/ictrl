@@ -32,10 +32,10 @@
 
 #include "buf.h"
 
-struct pdu *
-pdu_new(void)
+struct cbuf *
+cbuf_new(void)
 {
-	struct pdu *p;
+	struct cbuf *p;
 
 	if (!(p = calloc(1, sizeof(*p))))
 		return NULL;
@@ -43,13 +43,13 @@ pdu_new(void)
 }
 
 void *
-pdu_alloc(size_t len)
+cbuf_alloc(size_t len)
 {
 	return malloc(PDU_LEN(len));
 }
 
 void *
-pdu_dup(void *data, size_t len)
+cbuf_dup(void *data, size_t len)
 {
 	void *p;
 
@@ -59,7 +59,7 @@ pdu_dup(void *data, size_t len)
 }
 
 int
-pdu_addbuf(struct pdu *p, void *buf, size_t len, unsigned int elm)
+cbuf_addbuf(struct cbuf *p, void *buf, size_t len, unsigned int elm)
 {
 	if (len & PDU_MASK) {
 		bzero((char *)buf + len, PDU_ALIGN - (len & PDU_MASK));
@@ -78,7 +78,7 @@ pdu_addbuf(struct pdu *p, void *buf, size_t len, unsigned int elm)
 }
 
 void *
-pdu_getbuf(struct pdu *p, size_t *len, unsigned int elm)
+cbuf_getbuf(struct cbuf *p, size_t *len, unsigned int elm)
 {
 	if (len != NULL)
 		*len = 0;
@@ -92,7 +92,7 @@ pdu_getbuf(struct pdu *p, size_t *len, unsigned int elm)
 }
 
 void
-pdu_free(struct pdu *p)
+cbuf_free(struct cbuf *p)
 {
 	unsigned int i;
 

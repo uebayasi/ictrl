@@ -29,19 +29,19 @@
 #define PDU_MASK		(PDU_ALIGN - 1)
 #define PDU_LEN(x)		((((x) + PDU_MASK) / PDU_ALIGN) * PDU_ALIGN)
 
-struct pdu {
-	TAILQ_ENTRY(pdu)	 entry;
+struct cbuf {
+	TAILQ_ENTRY(cbuf)	 entry;
 	struct iovec		 iov[PDU_MAXIOV];
 	unsigned int		 iovlen;
 	size_t			 resid;
 };
-TAILQ_HEAD(pduq, pdu);
+TAILQ_HEAD(cbufq, cbuf);
 
-struct pdu *pdu_new(void);
-void	*pdu_alloc(size_t);
-void	*pdu_dup(void *, size_t);
-int	pdu_addbuf(struct pdu *, void *, size_t, unsigned int);
-void	*pdu_getbuf(struct pdu *, size_t *, unsigned int);
-void	pdu_free(struct pdu *);
+struct cbuf *cbuf_new(void);
+void	*cbuf_alloc(size_t);
+void	*cbuf_dup(void *, size_t);
+int	cbuf_addbuf(struct cbuf *, void *, size_t, unsigned int);
+void	*cbuf_getbuf(struct cbuf *, size_t *, unsigned int);
+void	cbuf_free(struct cbuf *);
 
 #endif /* _ICTRL_BUF_H_ */

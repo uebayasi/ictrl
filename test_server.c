@@ -41,8 +41,8 @@ void test_server_start(void *);
 void test_server_stop(void *);
 void test_server_shutdown(void *);
 int test_shutdown_isdown(void *);
-void test_ictrl_proc(struct ictrl_session *, struct pdu *);
-void test_ictrl_proc2(struct ictrl_session *, struct pdu *);
+void test_ictrl_proc(struct ictrl_session *, struct cbuf *);
+void test_ictrl_proc2(struct ictrl_session *, struct cbuf *);
 
 int
 main(int argc, char *argv[])
@@ -184,22 +184,22 @@ test_shutdown_isdown(void *data)
 }
 
 void
-test_ictrl_proc(struct ictrl_session *c, struct pdu *pdu)
+test_ictrl_proc(struct ictrl_session *c, struct cbuf *cbuf)
 {
 	struct ictrl_msghdr *cmh;
 	char *str;
 	size_t len;
 
-	cmh = pdu_getbuf(pdu, NULL, 0);
+	cmh = cbuf_getbuf(cbuf, NULL, 0);
 	if (cmh == NULL)
 		goto done;
 
 	switch (cmh->type) {
 	case 1:
 		printf("got 1!\n");
-		str = pdu_getbuf(pdu, &len, 1);
+		str = cbuf_getbuf(cbuf, &len, 1);
 		printf("str=%s\n", str);
-		str = pdu_getbuf(pdu, &len, 2);
+		str = cbuf_getbuf(cbuf, &len, 2);
 		printf("str=%s\n", str);
 
 		ictrl_build(c, 10, NULL, 0);
@@ -209,26 +209,26 @@ test_ictrl_proc(struct ictrl_session *c, struct pdu *pdu)
 	}
 
 done:
-	pdu_free(pdu);
+	cbuf_free(cbuf);
 }
 
 void
-test_ictrl_proc2(struct ictrl_session *c, struct pdu *pdu)
+test_ictrl_proc2(struct ictrl_session *c, struct cbuf *cbuf)
 {
 	struct ictrl_msghdr *cmh;
 	char *str;
 	size_t len;
 
-	cmh = pdu_getbuf(pdu, &len, 0);
+	cmh = cbuf_getbuf(cbuf, &len, 0);
 	if (cmh == NULL)
 		goto done;
 
 	switch (cmh->type) {
 	case 2:
 		printf("got 2!\n");
-		str = pdu_getbuf(pdu, &len, 1);
+		str = cbuf_getbuf(cbuf, &len, 1);
 		printf("str=%s\n", str);
-		str = pdu_getbuf(pdu, &len, 2);
+		str = cbuf_getbuf(cbuf, &len, 2);
 		printf("str=%s\n", str);
 
 		ictrl_build(c, 20, NULL, 0);
@@ -238,5 +238,5 @@ test_ictrl_proc2(struct ictrl_session *c, struct pdu *pdu)
 	}
 
 done:
-	pdu_free(pdu);
+	cbuf_free(cbuf);
 }

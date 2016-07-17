@@ -40,9 +40,9 @@ static void	ictrl_server_accept(int, short, void *);
 static void	ictrl_server_dispatch(int, short, void *);
 static void	ictrl_server_close(struct ictrl_session *);
 static void	ictrl_server_trigger(struct ictrl_session *);
-static struct pdu *
+static struct cbuf *
 		ictrl_compose(int, struct iovec *);
-static struct pdu *
+static struct cbuf *
 		ictrl_decompose(char *, size_t);
 
 /*
@@ -198,13 +198,13 @@ ictrl_server_dispatch(int fd, short event, void *v)
 		return;
 	}
 	if (event & EV_READ) {
-		struct pdu *pdu;
+		struct cbuf *cbuf;
 
-		if ((pdu = ictrl_recv(c)) == NULL) {
+		if ((cbuf = ictrl_recv(c)) == NULL) {
 			ictrl_server_close(c);
 			return;
 		}
-		(*c->state->config->proc)(c, pdu);
+		(*c->state->config->proc)(c, cbuf);
 	}
 	if (event & EV_WRITE) {
 		switch (ictrl_send(c)) {
@@ -222,7 +222,7 @@ ictrl_server_dispatch(int fd, short event, void *v)
 static void
 ictrl_server_close(struct ictrl_session *c)
 {
-	struct pdu *pdu;
+	struct cbuf *cbuf;
 
 	event_del(&c->ev);
 	close(c->fd);
@@ -233,9 +233,9 @@ ictrl_server_close(struct ictrl_session *c)
 		event_add(&c->state->ev, NULL);
 	}
 
-	while ((pdu = TAILQ_FIRST(&c->channel))) {
-		TAILQ_REMOVE(&c->channel, pdu, entry);
-		pdu_free(pdu);
+	while ((cbuf = TAILQ_FIRST(&c->channel))) {
+		TAILQ_REMOVE(&c->channel, cbuf, entry);
+		cbuf_free(cbuf);
 	}
 	free(c);
 }
@@ -319,16 +319,16 @@ int
 ictrl_buildv(struct ictrl_session *c, u_int16_t type, int argc,
     struct iovec *argv)
 {
-	struct pdu *pdu;
+	struct cbuf *cbuf;
 	struct ictrl_msghdr *cmh;
 
-	pdu = ictrl_compose(argc, argv);
-	if (pdu == NULL)
+	cbuf = ictrl_compose(argc, argv);
+	if (cbuf == NULL)
 		return -1;
-	cmh = pdu_getbuf(pdu, NULL, 0);
+	cmh = cbuf_getbuf(cbuf, NULL, 0);
 	cmh->type = type;
 
-	TAILQ_INSERT_TAIL(&c->channel, pdu, entry);
+	TAILQ_INSERT_TAIL(&c->channel, cbuf, entry);
 
 	/*
 	 * Schedule a next event for server.
@@ -339,10 +339,10 @@ ictrl_buildv(struct ictrl_session *c, u_int16_t type, int argc,
 	return 0;
 }
 
-static struct pdu *
+static struct cbuf *
 ictrl_compose(int argc, struct iovec *argv)
 {
-	struct pdu *pdu;
+	struct cbuf *cbuf;
 	struct ictrl_msghdr *cmh;
 	size_t n = 0;
 	int i;
@@ -355,12 +355,12 @@ ictrl_compose(int argc, struct iovec *argv)
 	if (PDU_LEN(n) > ICTRL_READ_SIZE - PDU_LEN(sizeof(*cmh)))
 		return NULL;
 
-	if ((pdu = pdu_new()) == NULL)
+	if ((cbuf = cbuf_new()) == NULL)
 		return NULL;
 	if ((cmh = malloc(sizeof(*cmh))) == NULL)
 		goto fail;
 	bzero(cmh, sizeof(*cmh));
-	pdu_addbuf(pdu, cmh, sizeof(*cmh), 0);
+	cbuf_addbuf(cbuf, cmh, sizeof(*cmh), 0);
 
 	for (i = 0; i < argc; i++) {
 		void *ptr;
@@ -368,23 +368,23 @@ ictrl_compose(int argc, struct iovec *argv)
 		if (argv[i].iov_len <= 0)
 			continue;
 		cmh->len[i] = argv[i].iov_len;
-		if ((ptr = pdu_alloc(argv[i].iov_len)) == NULL)
+		if ((ptr = cbuf_alloc(argv[i].iov_len)) == NULL)
 			goto fail;
 		memcpy(ptr, argv[i].iov_base, argv[i].iov_len);
-		pdu_addbuf(pdu, ptr, argv[i].iov_len, i + 1);
+		cbuf_addbuf(cbuf, ptr, argv[i].iov_len, i + 1);
 	}
 
-	return pdu;
+	return cbuf;
 
 fail:
-	pdu_free(pdu);
+	cbuf_free(cbuf);
 	return NULL;
 }
 
-static struct pdu *
+static struct cbuf *
 ictrl_decompose(char *buf, size_t len)
 {
-	struct pdu *pdu;
+	struct cbuf *cbuf;
 	struct ictrl_msghdr *cmh;
 	size_t n;
 	int i;
@@ -392,16 +392,16 @@ ictrl_decompose(char *buf, size_t len)
 	if (len < sizeof(*cmh))
 		return NULL;
 
-	if ((pdu = pdu_new()) == NULL)
+	if ((cbuf = cbuf_new()) == NULL)
 		return NULL;
 
 	n = sizeof(*cmh);
-	cmh = pdu_alloc(n);
+	cmh = cbuf_alloc(n);
 	memcpy(cmh, buf, n);
 	buf += n;
 	len -= n;
 
-	if (pdu_addbuf(pdu, cmh, n, 0)) {
+	if (cbuf_addbuf(cbuf, cmh, n, 0)) {
 		free(cmh);
 		goto fail;
 	}
@@ -414,10 +414,10 @@ ictrl_decompose(char *buf, size_t len)
 			continue;
 		if (PDU_LEN(n) > len)
 			goto fail;
-		if ((ptr = pdu_alloc(n)) == NULL)
+		if ((ptr = cbuf_alloc(n)) == NULL)
 			goto fail;
 		memcpy(ptr, buf, n);
-		if (pdu_addbuf(pdu, ptr, n, i + 1)) {
+		if (cbuf_addbuf(cbuf, ptr, n, i + 1)) {
 			free(ptr);
 			goto fail;
 		}
@@ -425,36 +425,36 @@ ictrl_decompose(char *buf, size_t len)
 		len -= PDU_LEN(n);
 	}
 
-	return pdu;
+	return cbuf;
 
 fail:
-	pdu_free(pdu);
+	cbuf_free(cbuf);
 	return NULL;
 }
 
 int
 ictrl_send(struct ictrl_session *c)
 {
-	struct pdu *pdu;
+	struct cbuf *cbuf;
 
-	if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
+	if ((cbuf = TAILQ_FIRST(&c->channel)) != NULL) {
 		struct msghdr msg;
 		int fd = (c->fd != -1) ? c->fd : c->state->fd;
 
 		bzero(&msg, sizeof(msg));
-		msg.msg_iov = pdu->iov;
-		msg.msg_iovlen = pdu->iovlen;
+		msg.msg_iov = cbuf->iov;
+		msg.msg_iovlen = cbuf->iovlen;
 		if (sendmsg(fd, &msg, 0) == -1) {
 			if (errno == EAGAIN || errno == ENOBUFS)
 				return EAGAIN;
 			return -1;
 		}
-		TAILQ_REMOVE(&c->channel, pdu, entry);
+		TAILQ_REMOVE(&c->channel, cbuf, entry);
 	}
 	return 0;
 }
 
-struct pdu *
+struct cbuf *
 ictrl_recv(struct ictrl_session *c)
 {
 	ssize_t n;

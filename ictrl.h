@@ -13,19 +13,19 @@
 struct ictrl_config;
 struct ictrl_session;
 struct ictrl_state;
-struct pdu;
+struct cbuf;
 struct ictrl_msghdr;
 
 struct ictrl_config {
 	char			*path;
 	int			backlog;
 	void			(*proc)(struct ictrl_session *,
-				    struct pdu *);
+				    struct cbuf *);
 };
 
 struct ictrl_session {
 	struct ictrl_state	*state;
-	struct pduq		channel;
+	struct cbufq		channel;
 	char			buf[ICTRL_READ_SIZE];
 	int			fd;	/* accept fd; only for server */
 	struct event		ev;	/* dispatch; only for server */
@@ -53,7 +53,7 @@ int		ictrl_build(struct ictrl_session *, u_int16_t, void *,
 int		ictrl_buildv(struct ictrl_session *, u_int16_t, int,
 		    struct iovec *);
 int		ictrl_send(struct ictrl_session *);
-struct pdu	*ictrl_recv(struct ictrl_session *);
+struct cbuf	*ictrl_recv(struct ictrl_session *);
 
 /*
  * Common control message header.

@@ -30,7 +30,7 @@ main(int argc, char *argv[])
 {
 	struct ictrl_session *c;
 	char *strs[] = { "hoge", "fuga" };
-	struct pdu *pdu;
+	struct cbuf *cbuf;
 	struct ictrl_msghdr *cmh;
 	int id = 1;
 	int ch;
@@ -64,14 +64,14 @@ main(int argc, char *argv[])
 	ictrl_buildv(c, id, 2, iov);
 
 	ictrl_send(c);
-	pdu = ictrl_recv(c);
-	cmh = pdu_getbuf(pdu, NULL, 0);
+	cbuf = ictrl_recv(c);
+	cmh = cbuf_getbuf(cbuf, NULL, 0);
 	if (cmh->type == id * 10) {
 		printf("success!\n");
 	} else {
 		return 1;
 	}
-	pdu_free(pdu);
+	cbuf_free(cbuf);
 	// }
 
 	ictrl_client_fini(c);
