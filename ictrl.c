@@ -438,18 +438,12 @@ ictrl_send(struct ictrl_session *c)
 	struct pdu *pdu;
 
 	if ((pdu = TAILQ_FIRST(&c->channel)) != NULL) {
-		struct iovec iov[nitems(pdu->iov)];
-		unsigned int niov = 0;
 		struct msghdr msg;
 		int fd = (c->fd != -1) ? c->fd : c->state->fd;
 
-		for (niov = 0; niov < nitems(iov); niov++) {
-			iov[niov].iov_base = pdu->iov[niov].iov_base;
-			iov[niov].iov_len = pdu->iov[niov].iov_len;
-		}
 		bzero(&msg, sizeof(msg));
-		msg.msg_iov = iov;
-		msg.msg_iovlen = niov;
+		msg.msg_iov = pdu->iov;
+		msg.msg_iovlen = pdu->iovlen;
 		if (sendmsg(fd, &msg, 0) == -1) {
 			if (errno == EAGAIN || errno == ENOBUFS)
 				return EAGAIN;

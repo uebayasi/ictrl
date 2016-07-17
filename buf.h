@@ -32,6 +32,7 @@
 struct pdu {
 	TAILQ_ENTRY(pdu)	 entry;
 	struct iovec		 iov[PDU_MAXIOV];
+	unsigned int		 iovlen;
 	size_t			 resid;
 };
 TAILQ_HEAD(pduq, pdu);

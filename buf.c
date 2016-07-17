@@ -67,10 +67,13 @@ pdu_addbuf(struct pdu *p, void *buf, size_t len, unsigned int elm)
 	}
 	if (elm >= nitems(p->iov))
 		return -1;
+	if (p->iovlen >= nitems(p->iov))
+		return -1;
 	if (p->iov[elm].iov_base)
 		return -1;
 	p->iov[elm].iov_base = buf;
 	p->iov[elm].iov_len = len;
+	p->iovlen++;
 	return 0;
 }
 
