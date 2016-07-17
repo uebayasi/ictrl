@@ -22,7 +22,6 @@
 #include <sys/queue.h>
 #include <sys/uio.h>
 
-#define CBUF_READ_SIZE		(256 * 1024)
 #define CBUF_MAXIOV		5
 #define CBUF_WRIOV		(CBUF_MAXIOV * 8)
 #define CBUF_ALIGN		4
