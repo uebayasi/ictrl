@@ -59,20 +59,16 @@ cbuf_dup(void *data, size_t len)
 }
 
 int
-cbuf_addbuf(struct cbuf *cbuf, void *buf, size_t len, unsigned int elm)
+cbuf_addbuf(struct cbuf *cbuf, void *buf, size_t len)
 {
 	if (len & PDU_MASK) {
 		bzero((char *)buf + len, PDU_ALIGN - (len & PDU_MASK));
 		len = PDU_LEN(len);
 	}
-	if (elm >= nitems(cbuf->iov))
-		return -1;
 	if (cbuf->iovlen >= nitems(cbuf->iov))
 		return -1;
-	if (cbuf->iov[elm].iov_base)
-		return -1;
-	cbuf->iov[elm].iov_base = buf;
-	cbuf->iov[elm].iov_len = len;
+	cbuf->iov[cbuf->iovlen].iov_base = buf;
+	cbuf->iov[cbuf->iovlen].iov_len = len;
 	cbuf->iovlen++;
 	return 0;
 }

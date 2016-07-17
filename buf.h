@@ -40,7 +40,7 @@ TAILQ_HEAD(cbufq, cbuf);
 struct cbuf *cbuf_new(void);
 void	*cbuf_alloc(size_t);
 void	*cbuf_dup(void *, size_t);
-int	cbuf_addbuf(struct cbuf *, void *, size_t, unsigned int);
+int	cbuf_addbuf(struct cbuf *, void *, size_t);
 void	*cbuf_getbuf(struct cbuf *, size_t *, unsigned int);
 void	cbuf_free(struct cbuf *);
 

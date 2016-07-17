@@ -106,7 +106,7 @@ ictrl_server_init(struct ictrl_config *cf)
 		return NULL;
 	}
 
-	/* set socket non-blocking */
+	/* Set socket non-blocking. */
 	if ((flags = fcntl(fd, F_GETFL)) == -1)
 		return NULL;
 	flags |= O_NONBLOCK;
@@ -360,7 +360,7 @@ ictrl_compose(int argc, struct iovec *argv)
 	if ((cmh = malloc(sizeof(*cmh))) == NULL)
 		goto fail;
 	bzero(cmh, sizeof(*cmh));
-	cbuf_addbuf(cbuf, cmh, sizeof(*cmh), 0);
+	cbuf_addbuf(cbuf, cmh, sizeof(*cmh));
 
 	for (i = 0; i < argc; i++) {
 		void *ptr;
@@ -371,7 +371,7 @@ ictrl_compose(int argc, struct iovec *argv)
 		if ((ptr = cbuf_alloc(argv[i].iov_len)) == NULL)
 			goto fail;
 		memcpy(ptr, argv[i].iov_base, argv[i].iov_len);
-		cbuf_addbuf(cbuf, ptr, argv[i].iov_len, i + 1);
+		cbuf_addbuf(cbuf, ptr, argv[i].iov_len);
 	}
 
 	return cbuf;
@@ -401,7 +401,7 @@ ictrl_decompose(char *buf, size_t len)
 	buf += n;
 	len -= n;
 
-	if (cbuf_addbuf(cbuf, cmh, n, 0)) {
+	if (cbuf_addbuf(cbuf, cmh, n)) {
 		free(cmh);
 		goto fail;
 	}
@@ -417,7 +417,7 @@ ictrl_decompose(char *buf, size_t len)
 		if ((ptr = cbuf_alloc(n)) == NULL)
 			goto fail;
 		memcpy(ptr, buf, n);
-		if (cbuf_addbuf(cbuf, ptr, n, i + 1)) {
+		if (cbuf_addbuf(cbuf, ptr, n)) {
 			free(ptr);
 			goto fail;
 		}
