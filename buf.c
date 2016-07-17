@@ -35,11 +35,11 @@
 struct cbuf *
 cbuf_new(void)
 {
-	struct cbuf *b;
+	struct cbuf *cbuf;
 
-	if (!(b = calloc(1, sizeof(*b))))
+	if ((cbuf = calloc(1, sizeof(*cbuf))) == NULL)
 		return NULL;
-	return b;
+	return cbuf;
 }
 
 void *
@@ -51,52 +51,52 @@ cbuf_alloc(size_t len)
 void *
 cbuf_dup(void *data, size_t len)
 {
-	void *b;
+	void *cbuf;
 
-	if ((b = malloc(PDU_LEN(len))))
-		memcpy(b, data, len);
-	return b;
+	if ((cbuf = malloc(PDU_LEN(len))))
+		memcpy(cbuf, data, len);
+	return cbuf;
 }
 
 int
-cbuf_addbuf(struct cbuf *b, void *buf, size_t len, unsigned int elm)
+cbuf_addbuf(struct cbuf *cbuf, void *buf, size_t len, unsigned int elm)
 {
 	if (len & PDU_MASK) {
 		bzero((char *)buf + len, PDU_ALIGN - (len & PDU_MASK));
 		len = PDU_LEN(len);
 	}
-	if (elm >= nitems(b->iov))
+	if (elm >= nitems(cbuf->iov))
 		return -1;
-	if (b->iovlen >= nitems(b->iov))
+	if (cbuf->iovlen >= nitems(cbuf->iov))
 		return -1;
-	if (b->iov[elm].iov_base)
+	if (cbuf->iov[elm].iov_base)
 		return -1;
-	b->iov[elm].iov_base = buf;
-	b->iov[elm].iov_len = len;
-	b->iovlen++;
+	cbuf->iov[elm].iov_base = buf;
+	cbuf->iov[elm].iov_len = len;
+	cbuf->iovlen++;
 	return 0;
 }
 
 void *
-cbuf_getbuf(struct cbuf *b, size_t *len, unsigned int elm)
+cbuf_getbuf(struct cbuf *cbuf, size_t *len, unsigned int elm)
 {
 	if (len != NULL)
 		*len = 0;
-	if (elm >= nitems(b->iov))
+	if (elm >= nitems(cbuf->iov))
 		return NULL;
-	if (b->iov[elm].iov_base == 0)
+	if (cbuf->iov[elm].iov_base == 0)
 		return NULL;
 	if (len != NULL)
-		*len = b->iov[elm].iov_len;
-	return b->iov[elm].iov_base;
+		*len = cbuf->iov[elm].iov_len;
+	return cbuf->iov[elm].iov_base;
 }
 
 void
-cbuf_free(struct cbuf *b)
+cbuf_free(struct cbuf *cbuf)
 {
 	unsigned int i;
 
-	for (i = 0; i < nitems(b->iov); i++)
-		free(b->iov[i].iov_base);
-	free(b);
+	for (i = 0; i < nitems(cbuf->iov); i++)
+		free(cbuf->iov[i].iov_base);
+	free(cbuf);
 }
