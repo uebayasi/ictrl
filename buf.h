@@ -22,16 +22,16 @@
 #include <sys/queue.h>
 #include <sys/uio.h>
 
-#define PDU_READ_SIZE		(256 * 1024)
-#define PDU_MAXIOV		5
-#define PDU_WRIOV		(PDU_MAXIOV * 8)
-#define PDU_ALIGN		4
-#define PDU_MASK		(PDU_ALIGN - 1)
-#define PDU_LEN(x)		((((x) + PDU_MASK) / PDU_ALIGN) * PDU_ALIGN)
+#define CBUF_READ_SIZE		(256 * 1024)
+#define CBUF_MAXIOV		5
+#define CBUF_WRIOV		(CBUF_MAXIOV * 8)
+#define CBUF_ALIGN		4
+#define CBUF_MASK		(CBUF_ALIGN - 1)
+#define CBUF_LEN(x)		((((x) + CBUF_MASK) / CBUF_ALIGN) * CBUF_ALIGN)
 
 struct cbuf {
 	TAILQ_ENTRY(cbuf)	 entry;
-	struct iovec		 iov[PDU_MAXIOV];
+	struct iovec		 iov[CBUF_MAXIOV];
 	unsigned int		 iovlen;
 };
 TAILQ_HEAD(cbufq, cbuf);

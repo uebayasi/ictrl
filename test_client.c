@@ -35,7 +35,7 @@ main(int argc, char *argv[])
 	int id = 1;
 	int ch;
 
-	struct iovec iov[PDU_MAXIOV] = {
+	struct iovec iov[CBUF_MAXIOV] = {
 		[0] = {
 			.iov_base = "common",
 			.iov_len = 7

@@ -352,7 +352,7 @@ ictrl_compose(int argc, struct iovec *argv)
 
 	for (i = 0; i < argc; i++)
 		n += argv[i].iov_len;
-	if (PDU_LEN(n) > ICTRL_READ_SIZE - PDU_LEN(sizeof(*cmh)))
+	if (CBUF_LEN(n) > ICTRL_READ_SIZE - CBUF_LEN(sizeof(*cmh)))
 		return NULL;
 
 	if ((cbuf = cbuf_new()) == NULL)
@@ -412,7 +412,7 @@ ictrl_decompose(char *buf, size_t len)
 		n = cmh->len[i];
 		if (n == 0)
 			continue;
-		if (PDU_LEN(n) > len)
+		if (CBUF_LEN(n) > len)
 			goto fail;
 		if ((ptr = cbuf_alloc(n)) == NULL)
 			goto fail;
@@ -421,8 +421,8 @@ ictrl_decompose(char *buf, size_t len)
 			free(ptr);
 			goto fail;
 		}
-		buf += PDU_LEN(n);
-		len -= PDU_LEN(n);
+		buf += CBUF_LEN(n);
+		len -= CBUF_LEN(n);
 	}
 
 	return cbuf;

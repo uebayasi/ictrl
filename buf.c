@@ -45,7 +45,7 @@ cbuf_new(void)
 void *
 cbuf_alloc(size_t len)
 {
-	return malloc(PDU_LEN(len));
+	return malloc(CBUF_LEN(len));
 }
 
 void *
@@ -53,7 +53,7 @@ cbuf_dup(void *data, size_t len)
 {
 	void *cbuf;
 
-	if ((cbuf = malloc(PDU_LEN(len))))
+	if ((cbuf = malloc(CBUF_LEN(len))))
 		memcpy(cbuf, data, len);
 	return cbuf;
 }
@@ -61,9 +61,9 @@ cbuf_dup(void *data, size_t len)
 int
 cbuf_addbuf(struct cbuf *cbuf, void *buf, size_t len)
 {
-	if (len & PDU_MASK) {
-		bzero((char *)buf + len, PDU_ALIGN - (len & PDU_MASK));
-		len = PDU_LEN(len);
+	if (len & CBUF_MASK) {
+		bzero((char *)buf + len, CBUF_ALIGN - (len & CBUF_MASK));
+		len = CBUF_LEN(len);
 	}
 	if (cbuf->iovlen >= nitems(cbuf->iov))
 		return -1;
