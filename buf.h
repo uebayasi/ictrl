@@ -22,8 +22,7 @@
 #include <sys/queue.h>
 #include <sys/uio.h>
 
-#define CBUF_MAXIOV		5
-#define CBUF_WRIOV		(CBUF_MAXIOV * 8)
+#define CBUF_MAXIOV		4
 #define CBUF_ALIGN		4
 #define CBUF_MASK		(CBUF_ALIGN - 1)
 #define CBUF_LEN(x)		((((x) + CBUF_MASK) / CBUF_ALIGN) * CBUF_ALIGN)

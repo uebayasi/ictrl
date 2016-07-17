@@ -8,7 +8,7 @@
 #include "buf.h"
 
 #define ICTRL_READ_SIZE		8192
-#define ICTRL_BUF_NUM		3
+#define ICTRL_BUF_NUM		(CBUF_MAXIOV - 1/* cmh */)
 
 struct ictrl_config;
 struct ictrl_session;
