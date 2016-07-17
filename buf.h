@@ -33,7 +33,6 @@ struct cbuf {
 	TAILQ_ENTRY(cbuf)	 entry;
 	struct iovec		 iov[PDU_MAXIOV];
 	unsigned int		 iovlen;
-	size_t			 resid;
 };
 TAILQ_HEAD(cbufq, cbuf);
 
