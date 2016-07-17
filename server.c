@@ -67,7 +67,6 @@ server_check(struct server_context *ctx)
 	log_init(ctx->config->debug);
 	log_verbose(ctx->config->verbose);
 
-	/* check for root privileges  */
 	if (geteuid())
 		errx(1, "need root privileges");
 }
@@ -128,7 +127,7 @@ server_signal(int sig, short event, void *arg)
 	struct server_context *ctx = arg;
 	struct timeval tv;
 
-	/* signal handler rules don't apply, libevent decouples for us */
+	/* Signal handler rules don't apply, libevent decouples for us. */
 	switch (sig) {
 	case SIGINT:
 	case SIGTERM:
