@@ -77,7 +77,7 @@ server_drop(struct server_context *ctx)
 {
 	struct passwd *pw;
 
-	if (!ctx->config->debug)
+	if (ctx->config->debug == NULL)
 		daemon(1, 0);
 
 	log_info("startup");
