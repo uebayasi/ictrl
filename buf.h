@@ -26,6 +26,7 @@
 #define CBUF_ALIGN		4
 #define CBUF_MASK		(CBUF_ALIGN - 1)
 #define CBUF_LEN(x)		((((x) + CBUF_MASK) / CBUF_ALIGN) * CBUF_ALIGN)
+#define CBUF_BUF_NUM		(CBUF_MAXIOV - 1/* cmh */)
 
 struct cbuf {
 	TAILQ_ENTRY(cbuf)	 entry;
@@ -33,6 +34,15 @@ struct cbuf {
 	unsigned int		 iovlen;
 };
 TAILQ_HEAD(cbufq, cbuf);
+
+/*
+ * Common control message header.
+ * A message can consist of up to 3 parts with specified length.
+ */
+struct cbuf_msghdr {
+	u_int16_t	type;
+	u_int16_t	len[CBUF_BUF_NUM];
+};
 
 struct cbuf *cbuf_new(void);
 void	*cbuf_alloc(size_t);
