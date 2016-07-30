@@ -25,8 +25,6 @@
 
 #define	ictrl_msghdr	cbuf_msghdr
 
-#define ICTRL_READ_SIZE		8192
-
 struct ictrl_config;
 struct ictrl_session;
 struct ictrl_state;
@@ -42,7 +40,7 @@ struct ictrl_config {
 struct ictrl_session {
 	struct ictrl_state	*state;
 	struct cbufq		channel;
-	char			buf[ICTRL_READ_SIZE];
+	char			buf[CBUF_BUF_SIZE];
 	int			fd;	/* accept fd; only for server */
 	struct event		ev;	/* dispatch; only for server */
 };

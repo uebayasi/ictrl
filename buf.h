@@ -27,6 +27,7 @@
 #define CBUF_MASK		(CBUF_ALIGN - 1)
 #define CBUF_LEN(x)		((((x) + CBUF_MASK) / CBUF_ALIGN) * CBUF_ALIGN)
 #define CBUF_BUF_NUM		(CBUF_MAXIOV - 1/* cmh */)
+#define CBUF_BUF_SIZE		8192
 
 struct cbuf {
 	TAILQ_ENTRY(cbuf)	 entry;

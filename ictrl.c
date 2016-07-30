@@ -352,7 +352,7 @@ ictrl_compose(int argc, struct iovec *argv)
 
 	for (i = 0; i < argc; i++)
 		n += argv[i].iov_len;
-	if (CBUF_LEN(n) > ICTRL_READ_SIZE - CBUF_LEN(sizeof(*cmh)))
+	if (CBUF_LEN(n) > CBUF_BUF_SIZE - CBUF_LEN(sizeof(*cmh)))
 		return NULL;
 
 	if ((cbuf = cbuf_new()) == NULL)
