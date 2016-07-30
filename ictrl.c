@@ -320,7 +320,7 @@ ictrl_buildv(struct ictrl_session *c, u_int16_t type, int argc,
     struct iovec *argv)
 {
 	struct cbuf *cbuf;
-	struct ictrl_msghdr *cmh;
+	struct cbuf_msghdr *cmh;
 
 	cbuf = ictrl_compose(argc, argv);
 	if (cbuf == NULL)
@@ -343,7 +343,7 @@ static struct cbuf *
 ictrl_compose(int argc, struct iovec *argv)
 {
 	struct cbuf *cbuf;
-	struct ictrl_msghdr *cmh;
+	struct cbuf_msghdr *cmh;
 	size_t n = 0;
 	int i;
 
@@ -385,7 +385,7 @@ static struct cbuf *
 ictrl_decompose(char *buf, size_t len)
 {
 	struct cbuf *cbuf;
-	struct ictrl_msghdr *cmh;
+	struct cbuf_msghdr *cmh;
 	size_t n;
 	int i;
 

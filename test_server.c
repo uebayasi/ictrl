@@ -186,7 +186,7 @@ test_shutdown_isdown(void *data)
 void
 test_ictrl_proc(struct ictrl_session *c, struct cbuf *cbuf)
 {
-	struct ictrl_msghdr *cmh;
+	struct cbuf_msghdr *cmh;
 	char *str;
 	size_t len;
 
@@ -215,7 +215,7 @@ done:
 void
 test_ictrl_proc2(struct ictrl_session *c, struct cbuf *cbuf)
 {
-	struct ictrl_msghdr *cmh;
+	struct cbuf_msghdr *cmh;
 	char *str;
 	size_t len;
 

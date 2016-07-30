@@ -31,7 +31,7 @@ main(int argc, char *argv[])
 	struct ictrl_session *c;
 	char *strs[] = { "hoge", "fuga" };
 	struct cbuf *cbuf;
-	struct ictrl_msghdr *cmh;
+	struct cbuf_msghdr *cmh;
 	int id = 1;
 	int ch;
 
