@@ -51,5 +51,9 @@ void	*cbuf_dup(void *, size_t);
 int	cbuf_addbuf(struct cbuf *, void *, size_t);
 void	*cbuf_getbuf(struct cbuf *, size_t *, unsigned int);
 void	cbuf_free(struct cbuf *);
+struct cbuf *
+		cbuf_compose(int, struct iovec *);
+struct cbuf *
+		cbuf_decompose(char *, size_t);
 
 #endif /* _ICTRL_BUF_H_ */

@@ -40,10 +40,6 @@ static void	ictrl_server_accept(int, short, void *);
 static void	ictrl_server_dispatch(int, short, void *);
 static void	ictrl_server_close(struct ictrl_session *);
 static void	ictrl_server_trigger(struct ictrl_session *);
-static struct cbuf *
-		ictrl_compose(int, struct iovec *);
-static struct cbuf *
-		ictrl_decompose(char *, size_t);
 
 /*
  * API for server
@@ -322,7 +318,7 @@ ictrl_buildv(struct ictrl_session *c, u_int16_t type, int argc,
 	struct cbuf *cbuf;
 	struct cbuf_msghdr *cmh;
 
-	cbuf = ictrl_compose(argc, argv);
+	cbuf = cbuf_compose(argc, argv);
 	if (cbuf == NULL)
 		return -1;
 	cmh = cbuf_getbuf(cbuf, NULL, 0);
@@ -337,99 +333,6 @@ ictrl_buildv(struct ictrl_session *c, u_int16_t type, int argc,
 		ictrl_server_trigger(c);
 
 	return 0;
-}
-
-static struct cbuf *
-ictrl_compose(int argc, struct iovec *argv)
-{
-	struct cbuf *cbuf;
-	struct cbuf_msghdr *cmh;
-	size_t n = 0;
-	int i;
-
-	if (argc > (int)nitems(cmh->len))
-		return NULL;
-
-	for (i = 0; i < argc; i++)
-		n += argv[i].iov_len;
-	if (CBUF_LEN(n) > CBUF_BUF_SIZE - CBUF_LEN(sizeof(*cmh)))
-		return NULL;
-
-	if ((cbuf = cbuf_new()) == NULL)
-		return NULL;
-	if ((cmh = malloc(sizeof(*cmh))) == NULL)
-		goto fail;
-	bzero(cmh, sizeof(*cmh));
-	cbuf_addbuf(cbuf, cmh, sizeof(*cmh));
-
-	for (i = 0; i < argc; i++) {
-		void *ptr;
-
-		if (argv[i].iov_len <= 0)
-			continue;
-		cmh->len[i] = argv[i].iov_len;
-		if ((ptr = cbuf_alloc(argv[i].iov_len)) == NULL)
-			goto fail;
-		memcpy(ptr, argv[i].iov_base, argv[i].iov_len);
-		cbuf_addbuf(cbuf, ptr, argv[i].iov_len);
-	}
-
-	return cbuf;
-
-fail:
-	cbuf_free(cbuf);
-	return NULL;
-}
-
-static struct cbuf *
-ictrl_decompose(char *buf, size_t len)
-{
-	struct cbuf *cbuf;
-	struct cbuf_msghdr *cmh;
-	size_t n;
-	int i;
-
-	if (len < sizeof(*cmh))
-		return NULL;
-
-	if ((cbuf = cbuf_new()) == NULL)
-		return NULL;
-
-	n = sizeof(*cmh);
-	cmh = cbuf_alloc(n);
-	memcpy(cmh, buf, n);
-	buf += n;
-	len -= n;
-
-	if (cbuf_addbuf(cbuf, cmh, n)) {
-		free(cmh);
-		goto fail;
-	}
-
-	for (i = 0; i < nitems(cmh->len); i++) {
-		void *ptr;
-
-		n = cmh->len[i];
-		if (n == 0)
-			continue;
-		if (CBUF_LEN(n) > len)
-			goto fail;
-		if ((ptr = cbuf_alloc(n)) == NULL)
-			goto fail;
-		memcpy(ptr, buf, n);
-		if (cbuf_addbuf(cbuf, ptr, n)) {
-			free(ptr);
-			goto fail;
-		}
-		buf += CBUF_LEN(n);
-		len -= CBUF_LEN(n);
-	}
-
-	return cbuf;
-
-fail:
-	cbuf_free(cbuf);
-	return NULL;
 }
 
 int
@@ -467,5 +370,5 @@ ictrl_recv(struct ictrl_session *c)
 	if (n == 0)
 		return NULL;
 
-	return ictrl_decompose(c->buf, n);
+	return cbuf_decompose(c->buf, n);
 }
